@@ -1,0 +1,2 @@
+Copy your existing .fcl component-library files into this folder.
+Nested folders by category are supported.
