@@ -1587,9 +1587,27 @@ function drawLib(){const box=$('lib'),res=search($('q').value),cnt={};lib.forEac
  if(res.length>lim){const b=document.createElement('button');b.textContent='Show more ('+(res.length-lim)+')';b.onclick=()=>{lim+=60;drawLib()};box.appendChild(b)}
  if(!res.length&&lib.length){const s=document.createElement('div');s.className='sep';s.textContent='No matches. Try fewer or simpler words.';box.appendChild(s)}}
 function place(id,x,y,zone=null){const L=lib.find(l=>l.id===id);if(!L)return;const hit=plateAtPoint({x,y}),z=zone||zoneAtPoint({x,y})||$('placeZone')?.value||'plate',pid=z==='plate'?(hit?.id||activePlateId):null,tag=z==='door'?'FD-'+String(items.filter(i=>i.zone==='door'&&!i.kind).length+1).padStart(2,'0'):'';multiSel.clear();marquee=null;const placed={id:uid++,lib:id,x:snap(x),y:snap(y),rot:0,w:L.mw,h:L.mh,scaleLocked:true,tag,zone:z,...(pid?{plateId:pid}:{}),...(z==='door'?{doorId:doorAtPoint({x,y})?.id||activeDoorId}:{})};items.push(placed);snapComponentToRail(placed);sel='i'+(uid-1);if(z==='door'){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists()}render();commit()}
-function side(on){$('side').classList.toggle('off',!on);$('tg').textContent=on?'‹':'›';const w=$('side').getBoundingClientRect().width;$('tg').style.left=on?(Math.min(w+14,window.innerWidth-46))+'px':'0px'}
+function syncMobileDrawerTop(){
+ if(window.innerWidth>780)return;
+ const bar=$('bar'),main=$('main'),drawer=$('side');if(!bar||!main||!drawer)return;
+ const br=bar.getBoundingClientRect(),mr=main.getBoundingClientRect();
+ drawer.style.top=Math.ceil(Math.max(100,br.bottom-mr.top+10))+'px';
+ drawer.style.bottom='calc(74px + env(safe-area-inset-bottom, 0px))';
+ const tg=$('tg');if(tg)tg.style.top='55%';
+}
+function side(on){
+ $('side').classList.toggle('off',!on);$('tg').textContent=on?'‹':'›';
+ if(on)syncMobileDrawerTop();
+ const w=$('side').getBoundingClientRect().width;
+ $('tg').style.left=on?(Math.min(w+14,window.innerWidth-46))+'px':'0px';
+}
 $('tg').onclick=()=>side($('side').classList.contains('off'));$('tg').removeAttribute('title');
 if(innerWidth<780)side(false);else side(true);
+requestAnimationFrame(syncMobileDrawerTop);
+window.addEventListener('resize',()=>requestAnimationFrame(syncMobileDrawerTop),{passive:true});
+window.addEventListener('orientationchange',()=>setTimeout(syncMobileDrawerTop,180),{passive:true});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>requestAnimationFrame(syncMobileDrawerTop),{passive:true});
+if(window.ResizeObserver){const mobileToolbarObserver=new ResizeObserver(()=>requestAnimationFrame(syncMobileDrawerTop));mobileToolbarObserver.observe($('bar'))}
 cv.ondragover=e=>e.preventDefault();cv.ondrop=e=>{e.preventDefault();const id=+e.dataTransfer.getData('t');if(id){const p=toW(e,true),z=zoneAtPoint(p)||$('placeZone')?.value||'plate';place(id,p.x,p.y,z)}};
 /* ---------- Ratline planning and duct-aware automatic routing ---------- */
 function ratlinePinSet(){const set=new Set();ratlines.filter(r=>(r.status||'pending')!=='routed').forEach(r=>{set.add(pinKey(r.a.item,r.a.t));set.add(pinKey(r.b.item,r.b.t))});return set}
@@ -2182,14 +2200,19 @@ async function unzip(buf){const u=new Uint8Array(buf),d=new DataView(buf);let e=
 function sizeFor(m,k){const mw=+(m.mw||m.widthMm||m.width_mm||0),mh=+(m.mh||m.heightMm||m.height_mm||0);if(mw>0&&mh>0)return{mw,mh,est:!!m.est};const o=sov[k];if(o)return{mw:o.w,mh:o.h,est:false};
  const mcb=/mcb|breaker|rccb|rcd|elcb|rcbo|mccb/i.test(m.name+' '+m.cat),np=Math.max(1,Math.round((m.terms||[]).length/2));
  if(mcb){const w=np*18;return{mw:w,mh:fmt(w*m.h/m.w),est:true}}return{mw:fmt(60*m.w/m.h),mh:60,est:true}}
-async function importFiles(files){let ok=0,updated=0,dup=0,bad=0,i=0;const have=new Map(lib.map(l=>[key(l),l]));
+async function importFiles(files,{silent=false}={}){let ok=0,updated=0,dup=0,bad=0,i=0;const have=new Map(lib.map(l=>[key(l),l]));
  const add=(buf,handle=null,filename='')=>{try{const r=readFcl(buf);if(!r){bad++;return}const m=r.m,k=(m.cat||'Other')+'|'+(m.name||'Unnamed component'),existing=have.get(k),sz=sizeFor(m,k),src=obj(r.png),L={...(existing||{}),id:existing?existing.id:uid++,name:m.name||'Unnamed component',cat:m.cat||'Other',src,w:m.w||r.png.length,h:m.h||1,...sz,def:m.terms||[],terms:tov[k]||m.terms||[],author:m.author,copyright:m.copyright,len:r.png.length,meta:m,fileHandle:handle|| (existing&&existing.fileHandle)||null,sourceFileName:filename|| (existing&&existing.sourceFileName)||''};
   if(existing){if(existing.src&&String(existing.src).startsWith('blob:'))URL.revokeObjectURL(existing.src);Object.assign(existing,L);updated++}else{lib.push(L);have.set(k,L);ok++}}
  catch(e){bad++}};
- for(const entry of files){i++;if(i%8===0){note('Importing '+i+' / '+files.length+' components…');await new Promise(r=>setTimeout(r))}try{const f=entry&&entry.file?entry.file:entry,handle=entry&&entry.file?entry.handle:null,filename=entry&&entry.file?(entry.rel||f.name):f.name,buf=await f.arrayBuffer(),u=new Uint8Array(buf,0,2);if(u[0]===80&&u[1]===75){for(const b of await unzip(buf))add(b,null,'')}else add(buf,handle,filename)}catch(e){bad++}}
+ for(const entry of files){
+  i++;
+  if(i%32===0){const progress=$('msg');if(progress){progress.textContent=(silent?'Restoring':'Importing')+' '+i+' / '+files.length+' components…';progress.className=''}await new Promise(resolve=>setTimeout(resolve,0))}
+  try{const f=entry&&entry.file?entry.file:entry,handle=entry&&entry.file?entry.handle:null,filename=entry&&entry.file?(entry.rel||f.name):f.name,buf=await f.arrayBuffer(),u=new Uint8Array(buf,0,2);if(u[0]===80&&u[1]===75){for(const b of await unzip(buf))add(b,null,'')}else add(buf,handle,filename)}catch(e){bad++}
+ }
  dirty=true;lim=60;drawLib();
  const summary='Library: '+ok+' added, '+updated+' refreshed'+(dup?', '+dup+' already present':'')+(bad?', '+bad+' files skipped':'')+'.';
- note(summary+(!ok&&!updated&&bad?' The files were found, but none matched the FCL1 library format. Import compatible .fcl/.flc files or the ZIP exported by Component Extractor.':''),!ok&&!updated&&bad);
+ const detail=summary+(!ok&&!updated&&bad?' The files were found, but none matched the FCL1 library format. Import compatible .fcl/.flc files or the ZIP exported by Component Extractor.':'');
+ if(silent){const progress=$('msg');if(progress){progress.textContent=detail;progress.className=(!ok&&!updated&&bad)?'err':''}}else note(detail,!ok&&!updated&&bad);
  return{ok,updated,dup,bad}
 }
 $('bIL').onclick=()=>$('il').click();$('bIF').onclick=()=>$('if').click();
@@ -2232,7 +2255,7 @@ function hostedEntrySignature(entry,rel){
 async function loadCachedHostedLibrary(){
  const rows=await hostedCacheAll(),files=[];
  for(const row of rows){if(!row.blob||!row.blob.size)continue;files.push(new File([row.blob],row.name||row.path.split('/').pop(),{type:'application/octet-stream',lastModified:row.savedAt||Date.now()}))}
- if(files.length){await importFiles(files);hostedLibraryReady=true}
+ if(files.length){await importFiles(files,{silent:true});hostedLibraryReady=true}
  return{files:files.length,rows};
 }
 async function loadHostedComponentLibrary({silent=false,forceRefresh=false,firstLoad=false}={}){
@@ -2259,7 +2282,7 @@ async function loadHostedComponentLibrary({silent=false,forceRefresh=false,first
   }
   const cached=await hostedCacheAll(),cacheMap=new Map(cached.map(x=>[hostedCacheKey(x.path),x]));
   const todo=validEntries.filter(x=>{const old=cacheMap.get(hostedCacheKey(x.rel));return !old||!old.blob||!old.blob.size||old.signature!==x.signature||(forceRefresh&&x.signature.startsWith('unversioned:'))});
-  let downloaded=0,failed=0,processed=0;
+  let downloaded=0,failed=0,processed=0;const downloadedRecords=[];
   if(firstLoad)hostedProgress(true,'Downloading your component library','First-time setup: downloading and saving the online library to this device…',0,validEntries.length);
   const batchSize=window.matchMedia('(max-width:780px)').matches?3:8;
   for(let start=0;start<todo.length;start+=batchSize){
@@ -2271,20 +2294,22 @@ async function loadHostedComponentLibrary({silent=false,forceRefresh=false,first
      const fr=await fetch(assetUrl.href,{cache:'no-store',credentials:'same-origin'});
      if(!fr.ok)throw new Error('HTTP '+fr.status);
      const blob=await fr.blob();if(!blob.size)throw new Error('File is empty');
-     await hostedCachePut({path:item.rel,signature:item.signature,blob,name:item.parts[item.parts.length-1],size:blob.size,savedAt:Date.now()});
-     return{ok:true};
+     const record={path:item.rel,signature:item.signature,blob,name:item.parts[item.parts.length-1],size:blob.size,savedAt:Date.now()};
+     await hostedCachePut(record);
+     return{record};
     }catch(e){return{error:item.rel+' · '+(e&&e.message||e)}}
    }));
-   for(const x of results){if(x.ok)downloaded++;else{failed++;missing.push(x.error)}}
+   for(const x of results){if(x.record){downloaded++;downloadedRecords.push(x.record)}else if(x.error){failed++;missing.push(x.error)}}
    processed+=batch.length;
    if(status)status.textContent='Saving online component library… '+processed+' / '+todo.length;
    if(firstLoad)hostedProgress(true,'Downloading your component library','Saving downloaded components locally…',Math.min(validEntries.length-todo.length+processed,validEntries.length),validEntries.length);
   }
-  // Re-import from IndexedDB so both new downloads and previously cached components are present.
-  const all=await hostedCacheAll(),files=all.filter(x=>x.blob&&x.blob.size).map(x=>new File([x.blob],x.name||x.path.split('/').pop(),{type:'application/octet-stream',lastModified:x.savedAt||Date.now()}));
-  let result={ok:0,updated:0,bad:0};if(files.length)result=await importFiles(files);
+  // Cached components were restored at startup; only decode the new downloads from this refresh.
+  const files=downloadedRecords.map(x=>new File([x.blob],x.name||x.path.split('/').pop(),{type:'application/octet-stream',lastModified:x.savedAt||Date.now()}));
+  let result={ok:0,updated:0,bad:0};if(files.length)result=await importFiles(files,{silent:true});
   result.downloaded=downloaded;result.failed=failed;result.missing=missing.length;result.total=validEntries.length;hostedLibraryLastResult=result;hostedLibraryReady=true;
-  if(status)status.textContent='Online library · '+files.length+' file(s) saved locally'+(failed?' · '+failed+' file(s) unavailable':'')+'. Custom imports are preserved.';
+  const cacheNow=await hostedCacheAll(),available=validEntries.filter(x=>{const row=cacheNow.find(c=>hostedCacheKey(c.path)===hostedCacheKey(x.rel));return row&&row.blob&&row.blob.size}).length;
+  if(status)status.textContent='Online library · '+available+' / '+validEntries.length+' files available locally'+(failed?' · '+failed+' file(s) unavailable':'')+'.';
   if(firstLoad){hostedProgress(true,'Component library ready',failed?'Some files could not be downloaded. You can retry them using Refresh online library.':'Your component library is downloaded and saved on this device.',validEntries.length-failed,validEntries.length);setTimeout(()=>hostedProgress(false),failed?3500:1200)}
   if(missing.length)console.warn('Panel Craft hosted library: some manifest entries could not be loaded.',missing);
   if(!silent&&files.length)note('Online library refreshed: '+downloaded+' file(s) downloaded; '+failed+' unavailable. Existing personal imports are preserved.',failed>0);
@@ -2975,4 +3000,12 @@ html,body{max-width:100%;overflow:hidden}
  });
  if(notifyBtn&&'Notification' in window&&Notification.permission==='granted')notifyBtn.querySelector('span').textContent='On';
 })();
-</script></body></html>
+</script><style id="r47-standalone-toolbar-and-library-offset">
+@media(max-width:780px){
+ #bar.glass-toolbar{top:calc(min(env(safe-area-inset-top,0px),54px) + 4px)!important}
+ #side{top:var(--pc-mobile-drawer-top,112px);bottom:calc(74px + env(safe-area-inset-bottom,0px))}
+}
+@media(display-mode:standalone) and (max-width:780px){
+ #bar.glass-toolbar{top:calc(min(env(safe-area-inset-top,0px),54px) + 4px)!important}
+}
+</style></body></html>
