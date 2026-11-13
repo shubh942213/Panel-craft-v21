@@ -1,5 +1,12 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101a2c">
+<meta name="application-name" content="Panel Craft">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Panel Craft">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/panel-craft.svg">
 <title>Panel Craft v2.1 · Ultimate Panel Builder Tool</title>
 <style>
 :root{--bg:#f4f4f2;--pn:#fff;--tx:#1b1b1b;--mu:#777;--bd:#d9d9d4;--ac:#e8a800;--grid:#e3e3de;--sw:min(310px,44vw);box-sizing:border-box}
@@ -1078,7 +1085,7 @@ let ratlineDraw=null,autoWirePreview=null,autoWirePrefs={gridMm:10,endpointReach
 let ductCoversVisible=true,drawingTextVisible=true,projectSaveFileHandle=null;
 try{const canvasVis=JSON.parse(localStorage.getItem('panelBuilderCanvasVisibilityV1')||'null');if(canvasVis&&typeof canvasVis.ductCoversVisible==='boolean')ductCoversVisible=canvasVis.ductCoversVisible;if(canvasVis&&typeof canvasVis.drawingTextVisible==='boolean')drawingTextVisible=canvasVis.drawingTextVisible}catch(e){}
 let pinAudit={},focusedItemId=null,showUnwiredPins=false,ferrulePrefs={enabled:true,prefix:'W',start:1,mode:'same'};
-const ptrs=new Map();let pinch=null;let projectRootHandle=null,libraryHandle=null,outputHandle=null,libraryIsRoot=false;
+const ptrs=new Map(),touchStarts=new Map();let pinch=null,lastTouchTap=null,lastPointerActivity=Date.now();let projectRootHandle=null,libraryHandle=null,outputHandle=null,libraryIsRoot=false;
 const PX=4;let plates=[{id:'P1',name:'Mounting Plate 1',w:600,h:800,x:0,y:0,color:'#ffffff'}],activePlateId='P1',plateLayout='h',plateGap=100,doors=[{id:'D1',name:'Door 1',plateId:'P1',w:0,h:0}],activeDoorId='D1',doorLayout='h',doorGap=100,doorViewSide='front',glandPlate={enabled:true,w:600,d:200,x:0,y:0,autoW:true,autoD:true,holes:[]};let dims=[],dimFrom=null,curW={x:0,y:0},panel={name:'Control Panel',client:'',by:'',rev:'A',no:'',pw:600,ph:800,bw:0,bh:0,bd:0,environment:'Indoor',doorConfig:'Single door',mounting:'Wall-mounted',ip:'',doorW:0,doorH:0,orient:'l',num:1},doorParts=[],doorLinks=[],grid=5,snapOn=true,sov={},clip=null,warn='';
 try{sov=JSON.parse(localStorage.getItem('sov')||'{}')}catch(e){}
 const dm=it=>[it.w*PX,it.h*PX];
@@ -1733,8 +1740,17 @@ function edgeSnap(it){const b=bb(it),T=8/view.k;let bx=0,by=0,dx=T,dy=T;
 function snapPt(p){const T=12/view.k,c=[];items.forEach(it=>{const b=bb(it);[b.x0,(b.x0+b.x1)/2,b.x1].forEach(x=>[b.y0,(b.y0+b.y1)/2,b.y1].forEach(y=>c.push({x,y})))});
  const pw=panel.pw*PX,ph=panel.ph*PX;if(pw&&ph)[0,pw/2,pw].forEach(x=>[0,ph/2,ph].forEach(y=>c.push({x,y})));dims.forEach(d=>c.push(d.a,d.b));
  let best=null,bd=T;c.forEach(q=>{const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;best=q}});return best?{x:best.x,y:best.y}:{x:snap(p.x),y:snap(p.y)}}
-cv.onpointerdown=e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
- if(ptrs.size===2){const[a,b]=[...ptrs.values()],r=cv.getBoundingClientRect();drag=null;pinch={d:Math.hypot(a.x-b.x,a.y-b.y),cx:(a.x+b.x)/2-r.left,cy:(a.y+b.y)/2-r.top,v:{...view}};return}
+cv.onpointerdown=e=>{
+ lastPointerActivity=Date.now();
+ ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(e.pointerType==='touch'){
+  const hit=e.target.closest?.('[data-i]');
+  touchStarts.set(e.pointerId,{itemId:hit?+hit.dataset.i:null,x:e.clientX,y:e.clientY,moved:false});
+ }
+ // Keep receiving move/up events even when a finger slides outside the SVG viewport.
+ try{if(cv.setPointerCapture&&!cv.hasPointerCapture(e.pointerId))cv.setPointerCapture(e.pointerId)}catch(_){}
+
+ if(ptrs.size===2){const[a,b]=[...ptrs.values()],r=cv.getBoundingClientRect();drag=null;pinch={d:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),cx:(a.x+b.x)/2-r.left,cy:(a.y+b.y)/2-r.top,v:{...view}};return}
  if(viewOnly){
   const t=e.target,wireEl=t.closest?.('[data-w]'),ratEl=t.closest?.('[data-ratline]'),itemEl=t.closest?.('[data-i]'),termEl=t.closest?.('[data-ti]'),
    forcePan=panMode||spacePan||e.button===1||e.button===2;
@@ -1804,7 +1820,11 @@ cv.onpointerdown=e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   marquee={x0:p.x,y0:p.y,x1:p.x,y1:p.y};drag={k:'marquee',x0:p.x,y0:p.y,x1:p.x,y1:p.y,additive};cap();render();return
  }
  multiSel.clear();sel=null;focusedItemId=null;selWp=null;wireFrom=null;drag={k:'p',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y};cap();render()};
-cv.onpointermove=e=>{if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});const forceDoor=!!(drag&&(drag.k==='group'||drag.k==='marquee'||(drag.k==='i'&&drag.o?.zone==='door')||(drag.k==='pin'&&drag.it?.zone==='door')||(drag.k==='rs'&&drag.it?.zone==='door')||(drag.k==='rail'&&drag.o?.zone==='door')||(drag.k==='wp'&&wireTouchesDoor(drag.w))||(drag.k==='seg'&&wireTouchesDoor(drag.w))))||!!(mode==='wire'&&wireDraw&&doorItem(wireDraw.a.item))||!!(mode==='ratline'&&ratlineDraw&&doorItem(ratlineDraw.a.item));curW=toW(e,forceDoor);status();if(mode==='dim'&&dimFrom){render();return}
+cv.onpointermove=e=>{
+ lastPointerActivity=Date.now();
+ if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ const ts=touchStarts.get(e.pointerId);if(ts&&!ts.moved&&Math.hypot(e.clientX-ts.x,e.clientY-ts.y)>12)ts.moved=true;
+const forceDoor=!!(drag&&(drag.k==='group'||drag.k==='marquee'||(drag.k==='i'&&drag.o?.zone==='door')||(drag.k==='pin'&&drag.it?.zone==='door')||(drag.k==='rs'&&drag.it?.zone==='door')||(drag.k==='rail'&&drag.o?.zone==='door')||(drag.k==='wp'&&wireTouchesDoor(drag.w))||(drag.k==='seg'&&wireTouchesDoor(drag.w))))||!!(mode==='wire'&&wireDraw&&doorItem(wireDraw.a.item))||!!(mode==='ratline'&&ratlineDraw&&doorItem(ratlineDraw.a.item));curW=toW(e,forceDoor);status();if(mode==='dim'&&dimFrom){render();return}
  if(pinch&&ptrs.size>=2){const[a,b]=[...ptrs.values()],r=cv.getBoundingClientRect(),d=Math.hypot(a.x-b.x,a.y-b.y),f=Math.max(.08,Math.min(4,pinch.v.k*d/pinch.d))/pinch.v.k,mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top;
   view.k=pinch.v.k*f;view.x=mx-(pinch.cx-pinch.v.x)*f;view.y=my-(pinch.cy-pinch.v.y)*f;render();return}
  if(drag?.k==='viewGesture'){
@@ -1830,9 +1850,32 @@ cv.onpointermove=e=>{if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,
  else if(drag.k==='pin')drag.L.terms[drag.i]=toLocal(drag.it,drag.L,p);else if(drag.k==='rs')resize(drag,p);
  else if(drag.k==='rail'){const rail=drag.o,oldX=rail.x,oldY=rail.y,nx=snap(p.x-drag.dx),ny=snap(p.y-drag.dy),dx=nx-oldX,dy=ny-oldY;rail.x=nx;rail.y=ny;const z=zoneAtPoint({x:nx,y:ny});if(z){rail.zone=z;if(z==='plate'){const pp=plateAtPoint({x:nx,y:ny});if(pp)rail.plateId=pp.id;delete rail.doorId}else if(z==='door'){rail.doorId=doorAtPoint({x:nx,y:ny})?.id||activeDoorId;delete rail.plateId}else{delete rail.plateId;delete rail.doorId}}const moved=new Map();drag.children.forEach(o=>{const child=items.find(x=>x.id===o.id);if(child){child.x=o.x+(nx-drag.startX);child.y=o.y+(ny-drag.startY);child.zone=rail.zone||'plate';if(child.zone==='plate'){child.plateId=rail.plateId||'P1';delete child.doorId}else if(child.zone==='door'){child.doorId=rail.doorId||activeDoorId;delete child.plateId}else{delete child.plateId;delete child.doorId}moved.set(child.id,{dx,dy})}});translateManualRoutes(moved);syncDoorPartsFromItems()}
  else{const oldX=drag.o.x,oldY=drag.o.y;drag.o.x=snap(p.x-drag.dx);drag.o.y=snap(p.y-drag.dy);if(drag.k==='i'){const z=zoneAtPoint({x:drag.o.x,y:drag.o.y});if(z){drag.o.zone=z;if(z==='plate'){const phit=plateAtPoint({x:drag.o.x,y:drag.o.y});if(phit)drag.o.plateId=phit.id;delete drag.o.doorId}else if(z==='door'){drag.o.doorId=doorAtPoint({x:drag.o.x,y:drag.o.y})?.id||activeDoorId;delete drag.o.plateId}}snapComponentToRail(drag.o);shiftManualWireAnchors(new Map([[drag.o.id,{dx:drag.o.x-oldX,dy:drag.o.y-oldY}]]));syncDoorPartsFromItems()}}render()};
-cv.onpointerup=cv.onpointercancel=e=>{const done=drag;
+cv.onpointerup=cv.onpointercancel=e=>{const done=drag,tap=touchStarts.get(e.pointerId);
  if(done?.k==='viewGesture'&&e.type==='pointerup'&&!done.moved&&!done.forcePan){const h=done.hit;if(h?.type==='wire')viewSelectWire(h.id);else if(h?.type==='ratline')viewSelectRatline(h.id);else if(h?.type==='component')viewSelectComponent(h.id);else viewClearSelection()}
- if(done&&done.k==='marquee')finishDoorMarquee(done);if(done&&done.k==='pin'){persist(done.L);commit();}if(done&&(done.k==='wp'||done.k==='seg')){commit()}if(done&&(done.k==='i'||done.k==='group'||done.k==='rail'||done.k==='surface')){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists();refreshDoorSelectorsSafe();refreshPlateSelectors();commit()}ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size){drag=null;cv.style.cursor=viewOnly?'grab':(panMode?'grab':'')}};
+ if(done&&done.k==='marquee')finishDoorMarquee(done);if(done&&done.k==='pin'){persist(done.L);commit();}if(done&&(done.k==='wp'||done.k==='seg')){commit()}if(done&&(done.k==='i'||done.k==='group'||done.k==='rail'||done.k==='surface')){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists();refreshDoorSelectorsSafe();refreshPlateSelectors();commit()}if(e.type==='pointerup'&&e.pointerType==='touch'&&tap&&!tap.moved&&tap.itemId&&ptrs.size===1&&!viewOnly){
+  const now=Date.now(),same=lastTouchTap&&lastTouchTap.itemId===tap.itemId&&now-lastTouchTap.at<430&&Math.hypot(e.clientX-lastTouchTap.x,e.clientY-lastTouchTap.y)<36;
+  if(same){
+   const it=items.find(x=>x.id===tap.itemId);
+   if(it){multiSel.clear();sel='i'+it.id;focusedItemId=it.id;selWp=null;render();syncPanel();openObjectMenu(e.clientX,e.clientY)}
+   lastTouchTap=null;
+  }else lastTouchTap={itemId:tap.itemId,at:now,x:e.clientX,y:e.clientY};
+ }else if(e.type==='pointercancel')lastTouchTap=null;
+ touchStarts.delete(e.pointerId);ptrs.delete(e.pointerId);
+ if(ptrs.size<2)pinch=null;
+ if(!ptrs.size){drag=null;cv.style.cursor=viewOnly?'grab':(panMode?'grab':'')}
+};
+
+// Recover cleanly when iOS interrupts a gesture (app switch, browser chrome gesture,
+// lost pointer capture, or an interrupted two-finger pinch).
+function resetInterruptedCanvasGesture(){
+ ptrs.clear();touchStarts.clear();pinch=null;drag=null;lastTouchTap=null;
+ cv.style.cursor=viewOnly?'grab':(panMode?'grab':'');
+}
+cv.addEventListener('lostpointercapture',e=>{if(ptrs.has(e.pointerId)){resetInterruptedCanvasGesture();render()}});
+window.addEventListener('blur',resetInterruptedCanvasGesture);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')resetInterruptedCanvasGesture();else requestAnimationFrame(()=>{render();if(typeof alignSecondaryToolbar==='function')alignSecondaryToolbar()})});
+setInterval(()=>{if(ptrs.size&&Date.now()-lastPointerActivity>45000){resetInterruptedCanvasGesture();render()}},5000);
+window.addEventListener('orientationchange',()=>setTimeout(()=>{render();if(typeof alignSecondaryToolbar==='function')alignSecondaryToolbar()},250));
 cv.onwheel=e=>{e.preventDefault();const r=cv.getBoundingClientRect(),unit=e.deltaMode===1?16:e.deltaMode===2?cv.clientHeight:1,dy=e.deltaY*unit,f=Math.exp(-dy*.00225),mx=e.clientX-r.left,my=e.clientY-r.top;zoomAt(view.k*f,mx,my)};
 cv.oncontextmenu=e=>{if(viewOnly||panMode||(mode==='wire'&&wireDraw)){e.preventDefault();return}};
 addEventListener('keydown',e=>{const tag=e.target?.tagName,editing=['INPUT','SELECT','TEXTAREA'].includes(tag)||e.target?.isContentEditable;if(e.code==='Space'&&!editing){spacePan=true;cv.style.cursor='grab';e.preventDefault()}},true);
@@ -2267,12 +2310,19 @@ $('gr').onchange=()=>{grid=+$('gr').value;render()};$('sn').onchange=()=>{snapOn
 /* ---------- undo / redo ---------- */
 let hist=[],hi=-1,historyRestoring=false;
 const snapState=()=>JSON.stringify({items,wires,ratlines,autoWirePrefs,texts,dims,panel,plates,activePlateId,plateLayout,plateGap,doors,activeDoorId,doorLayout,doorGap,doorViewSide,glandPlate,doorParts,doorLinks,pinAudit,ferrulePrefs,laneOffsets:Object.fromEntries(laneOff.entries()),uid,libState:lib.map(L=>({id:L.id,name:L.name,cat:L.cat,mw:L.mw,mh:L.mh,terms:L.terms,def:L.def,est:L.est,meta:L.meta}))});
-function resetHistory(){hist=[snapState()];hi=0}
-function commit(){if(historyRestoring)return;const s=snapState();if(hi<0){hist=[s];hi=0}else if(hist[hi]!==s){hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>120)hist.shift();hi=hist.length-1}scheduleAutosave()}
+function updateMobileHistoryUi(){
+ const u=$('pcHistoryUndo'),r=$('pcHistoryRedo');
+ if(u)u.disabled=hi<=0;if(r)r.disabled=hi>=hist.length-1;
+}
+function resetHistory(){hist=[snapState()];hi=0;updateMobileHistoryUi()}
+function commit(){if(historyRestoring)return;const s=snapState();if(hi<0){hist=[s];hi=0}else if(hist[hi]!==s){hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>120)hist.shift();hi=hist.length-1}updateMobileHistoryUi();scheduleAutosave()}
 function restore(s){historyRestoring=true;try{const d=JSON.parse(s);if(typeof d.ductCoversVisible==='boolean')ductCoversVisible=d.ductCoversVisible;items=(d.items||[]).map(it=>({...it,scaleLocked:it.scaleLocked===undefined?(it.kind==='rail'||it.kind==='duct'?false:true):it.scaleLocked!==false}));wires=d.wires||[];ratlines=d.ratlines||[];if(d.autoWirePrefs)Object.assign(autoWirePrefs,d.autoWirePrefs);if((+d.v||0)<11&&d.autoWirePrefs?.allowFallback===false)autoWirePrefs.allowFallback=true;texts=d.texts||[];dims=d.dims||[];panel=d.panel||panel;plates=d.plates||plates;activePlateId=d.activePlateId||activePlateId;plateLayout=d.plateLayout||plateLayout;plateGap=Number.isFinite(+d.plateGap)?+d.plateGap:plateGap;doors=Array.isArray(d.doors)?d.doors:[{id:'D1',name:'Door 1',plateId:'P1',w:0,h:0}];activeDoorId=d.activeDoorId||doors[0]?.id||'D1';doorLayout=d.doorLayout||'h';doorGap=Number.isFinite(+d.doorGap)?+d.doorGap:100;doorViewSide=d.doorViewSide==='back'?'back':'front';if(d.glandPlate)glandPlate={...glandPlate,...d.glandPlate,holes:d.glandPlate.holes||[]};if(d.laneOffsets)laneOff=new Map(Object.entries(d.laneOffsets).map(([k,v])=>[+k,+v]));ensurePlates();doorParts=d.doorParts||[];doorLinks=d.doorLinks||[];pinAudit=d.pinAudit||{};if(d.ferrulePrefs)Object.assign(ferrulePrefs,d.ferrulePrefs);if(Array.isArray(d.libState))d.libState.forEach(x=>{const L=lib.find(q=>q.id===x.id);if(L){L.name=x.name;L.cat=x.cat;L.mw=x.mw;L.mh=x.mh;L.terms=x.terms||[];L.def=x.def||[];L.est=x.est;L.meta=x.meta||L.meta}});uid=d.uid||uid;syncFerruleUI();ensurePlates();refreshPlateSelectors();refreshDoorSelectorsSafe();syncDoorFlipButton();migrateDoorPartsToCanvas();fillDoorSelectors();renderDoorLists();sel=null;focusedItemId=null;multiSel.clear();marquee=null;selWp=null;selPin=null;wireFrom=null;wireDraw=null;dimFrom=null;lastSel=null;render()}finally{historyRestoring=false}scheduleAutosave()}
-function undo(){if(hi>0){hi--;restore(hist[hi]);note('Undo complete.',0)}else note('Nothing more to undo.',0)}
-function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);note('Redo complete.',0)}else note('Nothing more to redo.',0)}
+function undo(){if(hi>0){hi--;restore(hist[hi]);updateMobileHistoryUi();note('Undo complete.',0)}else note('Nothing more to undo.',0)}
+function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);updateMobileHistoryUi();note('Redo complete.',0)}else note('Nothing more to redo.',0)}
 $('bUndo').onclick=undo;$('bRedo').onclick=redo;
+if($('pcHistoryUndo'))$('pcHistoryUndo').onclick=undo;
+if($('pcHistoryRedo'))$('pcHistoryRedo').onclick=redo;
+updateMobileHistoryUi();
 // Capture edits after their handlers have run. Do not turn Undo/Redo clicks into new history entries.
 ['click','change','input','keyup','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{if(e.target&&e.target.closest&&e.target.closest('#bUndo,#bRedo'))return;setTimeout(commit,0)},true));
 /* ---------- panel setup ---------- */
@@ -2834,4 +2884,81 @@ html,body{margin:0;width:100%;max-width:100%;overflow:hidden}
  .dlg .box{max-width:100%;min-width:0}
 }
 </style>
-</body></html>
+<style id="r46-mobile-touch-pwa-layout">
+html,body{max-width:100%;overflow:hidden}
+#cv{touch-action:none;-webkit-tap-highlight-color:transparent}
+@media(max-width:780px){
+ html,body{width:100%;height:100%;height:100dvh;min-height:0;max-height:100dvh;overflow:hidden;overscroll-behavior:none}
+ body{position:fixed;inset:0;width:100vw;max-width:100vw;padding:0}
+ #bar.glass-toolbar{left:0;right:0;width:100%;max-width:100vw;min-width:0;overflow:hidden;padding-top:max(5px,env(safe-area-inset-top));padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right));gap:5px}
+ #bar .toolbar-primary,#bar .toolbar-secondary{width:100%;min-width:0;max-width:100%;flex:0 1 auto;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+ #bar .toolbar-primary::-webkit-scrollbar,#bar .toolbar-secondary::-webkit-scrollbar{display:none}
+ #main{display:block;position:relative;width:100%;max-width:100vw;min-width:0;min-height:0;height:auto;flex:1 1 auto;overflow:hidden}
+ #wrap{position:absolute;inset:0;width:100%;height:100%;min-width:0;max-width:100vw;overflow:hidden;touch-action:none}
+ #cv{display:block;width:100%;height:100%;max-width:100%;min-width:0;touch-action:none}
+ #side{left:max(8px,env(safe-area-inset-left));right:auto;top:112px;bottom:calc(74px + env(safe-area-inset-bottom));width:min(88vw,350px);max-width:calc(100vw - 16px);min-width:0;overflow:hidden}
+ #side #sq{width:100%;min-width:0}
+ #side #q{width:1%;min-width:0;flex:1 1 auto}
+ #side #lib{min-width:0;max-width:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+ #side .res{min-width:0;max-width:100%;touch-action:pan-y}
+ #side .rt{min-width:0;overflow-wrap:anywhere}
+ #cp,#wp,#pp,#wireTray,#doorArrange{max-width:calc(100vw - 16px);min-width:0}
+ .object-menu{z-index:60;min-width:210px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 150px);overflow-y:auto;overscroll-behavior:contain}
+ .object-menu button{min-height:44px;padding:10px 12px;font-size:14px;touch-action:manipulation}
+ .dlg{max-width:100vw;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+ .dlg .box{max-width:100%;min-width:0}
+ #viewInspector{max-width:calc(100vw - 16px)}
+}
+</style>
+<div id="pcMobileActionDock" aria-label="Quick actions">
+ <button id="pcHistoryUndo" type="button" title="Undo" aria-label="Undo" disabled><b>↶</b><span>Undo</span></button>
+ <button id="pcHistoryRedo" type="button" title="Redo" aria-label="Redo" disabled><b>↷</b><span>Redo</span></button>
+ <span class="pcDockDivider" aria-hidden="true"></span>
+ <button id="pcInstallApp" type="button" title="Install Panel Craft as an app"><b>＋</b><span>Install</span></button>
+ <button id="pcEnableNotifications" type="button" title="Enable notifications on this device"><b>♢</b><span>Notify</span></button>
+</div>
+<style id="pc-mobile-action-dock-css">
+#pcMobileActionDock{display:none}
+@media(max-width:780px){
+ #pcMobileActionDock{position:fixed;z-index:9990;left:50%;bottom:calc(7px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;width:max-content;max-width:calc(100vw - 20px);padding:6px;border:1px solid rgba(200,216,242,.25);border-radius:18px;background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc}
+ #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:51px;min-height:48px;padding:4px 8px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
+ #pcMobileActionDock button b{font-size:21px;line-height:1}
+ #pcMobileActionDock button:disabled{opacity:.35}
+ #pcMobileActionDock button:active{background:rgba(116,134,242,.35)}
+ #pcMobileActionDock .pcDockDivider{width:1px;height:32px;background:rgba(203,216,238,.23);margin:0 1px}
+}
+</style><script id="panelCraftPwaBootstrap">
+(()=>{
+ 'use strict';
+ let registration=null,deferredInstallPrompt=null;
+ const installBtn=document.getElementById('pcInstallApp'),notifyBtn=document.getElementById('pcEnableNotifications');
+ const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+ if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>{registration=reg;return navigator.serviceWorker.ready}).then(reg=>{registration=reg}).catch(err=>console.warn('Panel Craft PWA registration failed:',err)));
+ }
+ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;if(installBtn)installBtn.querySelector('span').textContent='Install'});
+ window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(installBtn){installBtn.querySelector('span').textContent='Installed';installBtn.disabled=true}});
+ if(isStandalone()&&installBtn){installBtn.querySelector('span').textContent='Installed';installBtn.disabled=true}
+ if(installBtn)installBtn.addEventListener('click',async()=>{
+  if(isStandalone()){alert('Panel Craft is already running as an installed app.');return}
+  if(deferredInstallPrompt){
+   try{await deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null}catch(e){console.warn(e)}
+  }else if(isIOS){
+   alert('To install Panel Craft on iPhone:\n1. Open this website in your browser.\n2. Tap the Share button.\n3. Choose “Add to Home Screen”.\n4. Open Panel Craft from the new Home Screen icon for the app-style full-screen view.');
+  }else alert('Open your browser menu and choose “Install app” or “Add to Home screen”.');
+ });
+ if(notifyBtn)notifyBtn.addEventListener('click',async()=>{
+  if(!('Notification' in window)){alert('Notifications are not supported by this browser.');return}
+  if(isIOS&&!isStandalone()){alert('On iPhone, first add Panel Craft to the Home Screen and open it from its icon. Then enable notifications here.');return}
+  try{
+   const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+   if(permission!=='granted'){alert(permission==='denied'?'Notifications are blocked in browser settings. Enable them for Panel Craft in iPhone Settings.':'Notification permission was not granted.');return}
+   const reg=registration||await navigator.serviceWorker.ready;
+   await reg.showNotification('Panel Craft notifications enabled',{body:'This device is ready to display Panel Craft notifications.',icon:'/icons/panel-craft.svg',badge:'/icons/panel-craft.svg',tag:'panel-craft-notification-test'});
+   notifyBtn.querySelector('span').textContent='On';
+  }catch(e){console.warn('Notification setup failed:',e);alert('Could not enable notifications: '+(e.message||e))}
+ });
+ if(notifyBtn&&'Notification' in window&&Notification.permission==='granted')notifyBtn.querySelector('span').textContent='On';
+})();
+</script></body></html>
