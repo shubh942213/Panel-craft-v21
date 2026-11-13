@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Panel Craft v2.1",
+  "short_name": "Panel Craft",
+  "description": "Electrical panel design and wiring workspace",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0b1a",
+  "theme_color": "#101a2c",
+  "icons": [
+    {
+      "src": "/icons/panel-craft.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
