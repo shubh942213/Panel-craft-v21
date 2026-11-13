@@ -1860,6 +1860,12 @@ cv.onpointerup=cv.onpointercancel=e=>{const done=drag,tap=touchStarts.get(e.poin
    lastTouchTap=null;
   }else lastTouchTap={itemId:tap.itemId,at:now,x:e.clientX,y:e.clientY};
  }else if(e.type==='pointercancel')lastTouchTap=null;
+ if(e.type==='pointercancel'){
+  // iOS may cancel one contact while another remains captured; abandon the whole
+  // multi-touch gesture so no orphan pointer can leave the canvas in a stuck state.
+  touchStarts.clear();ptrs.clear();pinch=null;lastTouchTap=null;drag=null;
+  cv.style.cursor=viewOnly?'grab':(panMode?'grab':'');render();commit();return;
+ }
  touchStarts.delete(e.pointerId);ptrs.delete(e.pointerId);
  if(ptrs.size<2)pinch=null;
  if(!ptrs.size){drag=null;cv.style.cursor=viewOnly?'grab':(panMode?'grab':'')}
@@ -1876,6 +1882,14 @@ window.addEventListener('blur',resetInterruptedCanvasGesture);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')resetInterruptedCanvasGesture();else requestAnimationFrame(()=>{render();if(typeof alignSecondaryToolbar==='function')alignSecondaryToolbar()})});
 setInterval(()=>{if(ptrs.size&&Date.now()-lastPointerActivity>45000){resetInterruptedCanvasGesture();render()}},5000);
 window.addEventListener('orientationchange',()=>setTimeout(()=>{render();if(typeof alignSecondaryToolbar==='function')alignSecondaryToolbar()},250));
+if(window.visualViewport){
+ window.visualViewport.addEventListener('resize',()=>{if(!ptrs.size)render()},{passive:true});
+ window.visualViewport.addEventListener('scroll',()=>{if(!ptrs.size)render()},{passive:true});
+}
+if(window.ResizeObserver){
+ const panelCraftCanvasObserver=new ResizeObserver(()=>{if(!ptrs.size)render()});
+ panelCraftCanvasObserver.observe(cv);
+}
 cv.onwheel=e=>{e.preventDefault();const r=cv.getBoundingClientRect(),unit=e.deltaMode===1?16:e.deltaMode===2?cv.clientHeight:1,dy=e.deltaY*unit,f=Math.exp(-dy*.00225),mx=e.clientX-r.left,my=e.clientY-r.top;zoomAt(view.k*f,mx,my)};
 cv.oncontextmenu=e=>{if(viewOnly||panMode||(mode==='wire'&&wireDraw)){e.preventDefault();return}};
 addEventListener('keydown',e=>{const tag=e.target?.tagName,editing=['INPUT','SELECT','TEXTAREA'].includes(tag)||e.target?.isContentEditable;if(e.code==='Space'&&!editing){spacePan=true;cv.style.cursor='grab';e.preventDefault()}},true);
