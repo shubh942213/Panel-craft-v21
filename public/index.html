@@ -5,8 +5,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Panel Craft">
+<meta property="og:title" content="Panel Craft v2.1">
+<meta property="og:description" content="Electrical panel design and wiring tool">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://panel-craft.netlify.app/icons/panel-craft-logo-192-v2.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://panel-craft.netlify.app/icons/panel-craft-logo-192-v2.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icons/panel-craft-logo-192-v2.png">
+<link rel="apple-touch-icon" href="/icons/panel-craft-logo-192-v2.png">
 <title>Panel Craft v2.1 · Ultimate Panel Builder Tool</title>
 <style>
 :root{--bg:#f4f4f2;--pn:#fff;--tx:#1b1b1b;--mu:#777;--bd:#d9d9d4;--ac:#e8a800;--grid:#e3e3de;--sw:min(310px,44vw);box-sizing:border-box}
@@ -702,7 +709,7 @@ body{
 
 <div id="pcLicenseGate" role="dialog" aria-modal="true" aria-labelledby="pcLicenseHeading">
  <div id="pcLicenseCard">
-  <div id="pcLicenseBrand"><div id="pcLicenseLogo">PC</div><div><strong>Panel Craft v2.1</strong><small>ULTIMATE PANEL BUILDER TOOL · LICENSED EDITION</small></div></div>
+  <div id="pcLicenseBrand"><img id="pcLicenseLogo" src="/icons/panel-craft-logo-192-v2.png" alt="Panel Craft logo"><div><strong>Panel Craft v2.1</strong><small>ULTIMATE PANEL BUILDER TOOL · LICENSED EDITION</small></div></div>
   <div id="pcLicenseLogin">
    <div id="pcLicenseEyebrow">License activation</div>
    <h1 id="pcLicenseHeading">Activate Panel Craft</h1>
@@ -724,7 +731,7 @@ body{
 
 <div id="bar" class="glass-toolbar">
  <div class="toolbar-primary">
-  <div class="brand-mark" aria-label="Panel Craft v2.1"><span class="brand-icon">PC</span><span class="brand-copy"><b>Panel Craft v2.1</b><small>ULTIMATE PANEL BUILDER TOOL</small></span></div><span id="pcLicenseBadge" title="Your Panel Craft license is active">LICENSE ACTIVE</span>
+  <div class="brand-mark" aria-label="Panel Craft v2.1"><img class="brand-icon" src="/icons/panel-craft-logo-192-v2.png" alt=""><span class="brand-copy"><b>Panel Craft v2.1</b><small>ULTIMATE PANEL BUILDER TOOL</small></span></div><span id="pcLicenseBadge" title="Your Panel Craft license is active">LICENSE ACTIVE</span>
   <button id="bViewOnly" type="button" aria-pressed="false" title="Inspect components and connected cables without changing drawing geometry">View Only</button>
   <button id="bNew" class="new-drawing-btn" type="button" title="Start a new blank panel drawing and open panel details">＋ New drawing</button>
   <button id="bLoad" class="load-project-btn" type="button" title="Load an existing Panel Craft project">Load</button>
@@ -2949,56 +2956,77 @@ html,body{max-width:100%;overflow:hidden}
  #viewInspector{max-width:calc(100vw - 16px)}
 }
 </style>
-<div id="pcMobileActionDock" aria-label="Quick actions">
+<div id="pcMobileActionDock" aria-label="Movable undo and redo controls">
+ <span id="pcDockGrip" role="button" tabindex="0" aria-label="Move undo and redo controls" title="Drag to move this toolbar">⠿</span>
  <button id="pcHistoryUndo" type="button" title="Undo" aria-label="Undo" disabled><b>↶</b><span>Undo</span></button>
  <button id="pcHistoryRedo" type="button" title="Redo" aria-label="Redo" disabled><b>↷</b><span>Redo</span></button>
- <span class="pcDockDivider" aria-hidden="true"></span>
- <button id="pcInstallApp" type="button" title="Install Panel Craft as an app"><b>＋</b><span>Install</span></button>
- <button id="pcEnableNotifications" type="button" title="Enable notifications on this device"><b>♢</b><span>Notify</span></button>
 </div>
 <style id="pc-mobile-action-dock-css">
 #pcMobileActionDock{display:none}
 @media(max-width:780px){
- #pcMobileActionDock{position:fixed;z-index:9990;left:50%;bottom:calc(7px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;width:max-content;max-width:calc(100vw - 20px);padding:6px;border:1px solid rgba(200,216,242,.25);border-radius:18px;background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc}
- #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:51px;min-height:48px;padding:4px 8px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
+ #pcMobileActionDock{position:fixed;z-index:9990;left:50%;bottom:calc(7px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:7px;width:max-content;max-width:calc(100vw - 20px);padding:13px 7px 7px;border:1px solid rgba(200,216,242,.25);border-radius:18px;background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc;touch-action:none;user-select:none;-webkit-user-select:none}
+ #pcDockGrip{position:absolute;left:50%;top:2px;transform:translateX(-50%);display:grid;place-items:center;width:42px;height:10px;border-radius:8px;color:rgba(232,241,255,.72);font-size:15px;font-weight:900;line-height:8px;cursor:grab;touch-action:none}
+ #pcDockGrip:active{color:#fff;cursor:grabbing}
+ #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:60px;min-height:48px;padding:4px 10px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
  #pcMobileActionDock button b{font-size:21px;line-height:1}
  #pcMobileActionDock button:disabled{opacity:.35}
  #pcMobileActionDock button:active{background:rgba(116,134,242,.35)}
- #pcMobileActionDock .pcDockDivider{width:1px;height:32px;background:rgba(203,216,238,.23);margin:0 1px}
 }
 </style><script id="panelCraftPwaBootstrap">
 (()=>{
  'use strict';
- let registration=null,deferredInstallPrompt=null;
- const installBtn=document.getElementById('pcInstallApp'),notifyBtn=document.getElementById('pcEnableNotifications');
- const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
  if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>{registration=reg;return navigator.serviceWorker.ready}).then(reg=>{registration=reg}).catch(err=>console.warn('Panel Craft PWA registration failed:',err)));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(err=>console.warn('Panel Craft PWA registration failed:',err)));
  }
- window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;if(installBtn)installBtn.querySelector('span').textContent='Install'});
- window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;if(installBtn){installBtn.querySelector('span').textContent='Installed';installBtn.disabled=true}});
- if(isStandalone()&&installBtn){installBtn.querySelector('span').textContent='Installed';installBtn.disabled=true}
- if(installBtn)installBtn.addEventListener('click',async()=>{
-  if(isStandalone()){alert('Panel Craft is already running as an installed app.');return}
-  if(deferredInstallPrompt){
-   try{await deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null}catch(e){console.warn(e)}
-  }else if(isIOS){
-   alert('To install Panel Craft on iPhone:\n1. Open this website in your browser.\n2. Tap the Share button.\n3. Choose “Add to Home Screen”.\n4. Open Panel Craft from the new Home Screen icon for the app-style full-screen view.');
-  }else alert('Open your browser menu and choose “Install app” or “Add to Home screen”.');
- });
- if(notifyBtn)notifyBtn.addEventListener('click',async()=>{
-  if(!('Notification' in window)){alert('Notifications are not supported by this browser.');return}
-  if(isIOS&&!isStandalone()){alert('On iPhone, first add Panel Craft to the Home Screen and open it from its icon. Then enable notifications here.');return}
+ // A small grip handle lets the two persistent history controls be moved anywhere
+ // within the visible viewport. Position is remembered on this device/browser.
+ const dock=document.getElementById('pcMobileActionDock'),grip=document.getElementById('pcDockGrip');
+ if(!dock||!grip)return;
+ const POS_KEY='panelCraftUndoRedoDockPositionV2';
+ const viewport=()=>({w:window.visualViewport?.width||window.innerWidth,h:window.visualViewport?.height||window.innerHeight});
+ function clamp(left,top){
+  const r=dock.getBoundingClientRect(),v=viewport();
+  return{left:Math.max(8,Math.min(Math.max(8,v.w-r.width-8),left)),top:Math.max(8,Math.min(Math.max(8,v.h-r.height-8),top))};
+ }
+ function setPosition(left,top,persist=false){
+  const p=clamp(left,top);
+  dock.style.left=p.left+'px';dock.style.top=p.top+'px';
+  dock.style.right='auto';dock.style.bottom='auto';dock.style.transform='none';
+  if(persist){try{localStorage.setItem(POS_KEY,JSON.stringify(p))}catch(_){}}
+ }
+ function restorePosition(){
   try{
-   const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
-   if(permission!=='granted'){alert(permission==='denied'?'Notifications are blocked in browser settings. Enable them for Panel Craft in iPhone Settings.':'Notification permission was not granted.');return}
-   const reg=registration||await navigator.serviceWorker.ready;
-   await reg.showNotification('Panel Craft notifications enabled',{body:'This device is ready to display Panel Craft notifications.',icon:'/icons/panel-craft.svg',badge:'/icons/panel-craft.svg',tag:'panel-craft-notification-test'});
-   notifyBtn.querySelector('span').textContent='On';
-  }catch(e){console.warn('Notification setup failed:',e);alert('Could not enable notifications: '+(e.message||e))}
+   const p=JSON.parse(localStorage.getItem(POS_KEY)||'null');
+   if(p&&Number.isFinite(p.left)&&Number.isFinite(p.top))setPosition(p.left,p.top);
+  }catch(_){}
+ }
+ requestAnimationFrame(restorePosition);
+ let moving=null;
+ grip.addEventListener('pointerdown',e=>{
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault();
+  const r=dock.getBoundingClientRect();
+  setPosition(r.left,r.top);
+  moving={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};
+  try{grip.setPointerCapture(e.pointerId)}catch(_){}
  });
- if(notifyBtn&&'Notification' in window&&Notification.permission==='granted')notifyBtn.querySelector('span').textContent='On';
+ grip.addEventListener('pointermove',e=>{
+  if(!moving||moving.id!==e.pointerId)return;
+  setPosition(e.clientX-moving.dx,e.clientY-moving.dy);
+ });
+ function finishMove(e){
+  if(!moving||moving.id!==e.pointerId)return;
+  const r=dock.getBoundingClientRect();setPosition(r.left,r.top,true);moving=null;
+ }
+ grip.addEventListener('pointerup',finishMove);
+ grip.addEventListener('pointercancel',finishMove);
+ const keepInView=()=>{
+  if(moving)return;
+  const r=dock.getBoundingClientRect();setPosition(r.left,r.top,true);
+ };
+ window.addEventListener('resize',keepInView,{passive:true});
+ window.addEventListener('orientationchange',()=>setTimeout(keepInView,180),{passive:true});
+ if(window.visualViewport)window.visualViewport.addEventListener('resize',keepInView,{passive:true});
 })();
 </script><style id="r47-standalone-toolbar-and-library-offset">
 @media(max-width:780px){
@@ -3008,4 +3036,7 @@ html,body{max-width:100%;overflow:hidden}
 @media(display-mode:standalone) and (max-width:780px){
  #bar.glass-toolbar{top:calc(min(env(safe-area-inset-top,0px),54px) + 4px)!important}
 }
+</style><style id="panel-craft-final-brand-style">
+.brand-icon{display:block;object-fit:cover;border-radius:10px;background:none!important;box-shadow:0 5px 14px rgba(10,132,255,.24)}
+#pcLicenseLogo{display:block;object-fit:cover;background:none!important;box-shadow:0 7px 24px rgba(0,0,0,.25)}
 </style></body></html>

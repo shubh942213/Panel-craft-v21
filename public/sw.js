@@ -1,5 +1,5 @@
-const CACHE_NAME='panel-craft-shell-v1';
-const SHELL=['/','/index.html','/manifest.webmanifest','/icons/panel-craft.svg'];
+const CACHE_NAME='panel-craft-shell-v2';
+const SHELL=['/','/index.html','/manifest.webmanifest','/icons/panel-craft-logo-192-v2.png','/icons/panel-craft-logo-512-v2.svg'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
