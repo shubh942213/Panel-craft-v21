@@ -2144,8 +2144,41 @@ addEventListener('dragover',e=>e.preventDefault());addEventListener('drop',e=>{i
    assets. The public library is read-only; personal imports and .fcl saves still
    use the existing Import library / Import folder / IndexedDB / local-folder flows. */
 const HOSTED_LIBRARY_MANIFEST='components_library/manifest.json';
-let hostedLibraryLoading=false,hostedLibraryLastResult=null;
-async function loadHostedComponentLibrary({silent=false}={}){
+let hostedLibraryLoading=false,hostedLibraryLastResult=null,hostedLibraryReady=false;
+const hostedCacheKey=p=>String(p||'').toLowerCase();
+async function hostedCacheAll(){
+ const d=await idb();return await idbReq(d.transaction('hostedLibrary').objectStore('hostedLibrary').getAll());
+}
+async function hostedCachePut(record){
+ const d=await idb(),tx=d.transaction('hostedLibrary','readwrite');
+ tx.objectStore('hostedLibrary').put(record);
+ return new Promise((res,rej)=>{tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)});
+}
+function hostedProgressOverlay(){
+ let el=document.getElementById('pcLibraryFirstLoad');if(el)return el;
+ el=document.createElement('div');el.id='pcLibraryFirstLoad';
+ el.innerHTML='<div class="pc-library-card"><div class="pc-library-mark">PC</div><div class="pc-library-eyebrow">PANEL CRAFT COMPONENT LIBRARY</div><h2 id="pcLibraryTitle">Preparing your component library</h2><p id="pcLibraryMessage">Downloading components and saving them securely on this device. Please wait…</p><div class="pc-library-track"><span id="pcLibraryBar"></span></div><div class="pc-library-count" id="pcLibraryCount">Starting…</div><div class="pc-library-foot">This is a one-time download for this browser. Next time, your saved library will load locally.</div></div>';
+ const st=document.createElement('style');st.textContent='#pcLibraryFirstLoad{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(7,13,25,.96);color:#f8fafc;font-family:inherit}#pcLibraryFirstLoad.show{display:flex}#pcLibraryFirstLoad .pc-library-card{width:min(460px,100%);padding:30px;border:1px solid #334155;border-radius:22px;background:#111d30;box-shadow:0 24px 80px #0008;text-align:center}#pcLibraryFirstLoad .pc-library-mark{width:54px;height:54px;margin:0 auto 16px;display:grid;place-items:center;border-radius:16px;background:linear-gradient(135deg,#7486f2,#45c5d8);font-weight:900;font-size:18px}#pcLibraryFirstLoad .pc-library-eyebrow{font-size:10px;letter-spacing:.16em;color:#91a9ff;font-weight:800}#pcLibraryFirstLoad h2{font-size:22px;margin:10px 0}#pcLibraryFirstLoad p{font-size:13px;line-height:1.6;color:#c4cfdf}#pcLibraryFirstLoad .pc-library-track{height:9px;border-radius:20px;background:#26364d;overflow:hidden;margin:22px 0 10px}#pcLibraryFirstLoad .pc-library-track span{display:block;width:0;height:100%;background:linear-gradient(90deg,#7486f2,#45c5d8);transition:width .2s}#pcLibraryFirstLoad .pc-library-count{font-size:12px;color:#dbeafe;font-weight:700}#pcLibraryFirstLoad .pc-library-foot{margin-top:18px;font-size:11px;color:#94a3b8}';
+ document.head.appendChild(st);document.body.appendChild(el);return el;
+}
+function hostedProgress(show,title,message,done,total){
+ const el=hostedProgressOverlay();el.classList.toggle('show',!!show);
+ const t=document.getElementById('pcLibraryTitle'),m=document.getElementById('pcLibraryMessage'),c=document.getElementById('pcLibraryCount'),bar=document.getElementById('pcLibraryBar');
+ if(t&&title)t.textContent=title;if(m&&message)m.textContent=message;
+ if(c)c.textContent=total?Math.min(done,total)+' / '+total+' files processed':message||'Preparing…';
+ if(bar)bar.style.width=total?Math.min(100,done/total*100)+'%':'0%';
+}
+function hostedEntrySignature(entry,rel){
+ if(typeof entry==='string')return 'unversioned:'+rel;
+ return String(entry.sha256||entry.hash||entry.version||entry.etag||entry.updatedAt||entry.size||('unversioned:'+rel));
+}
+async function loadCachedHostedLibrary(){
+ const rows=await hostedCacheAll(),files=[];
+ for(const row of rows){if(!row.blob||!row.blob.size)continue;files.push(new File([row.blob],row.name||row.path.split('/').pop(),{type:'application/octet-stream',lastModified:row.savedAt||Date.now()}))}
+ if(files.length){await importFiles(files);hostedLibraryReady=true}
+ return{files:files.length,rows};
+}
+async function loadHostedComponentLibrary({silent=false,forceRefresh=false,firstLoad=false}={}){
  if(hostedLibraryLoading)return hostedLibraryLastResult;
  hostedLibraryLoading=true;
  const status=$('projStatus'),button=$('bReloadHostedLibrary'),oldText=button?.textContent;
@@ -2153,61 +2186,63 @@ async function loadHostedComponentLibrary({silent=false}={}){
  try{
   const manifestUrl=new URL(HOSTED_LIBRARY_MANIFEST,new URL('./',location.href));
   const mr=await fetch(manifestUrl.href,{cache:'no-store',credentials:'same-origin'});
-  if(mr.status===404){
-   if(status)status.textContent='Online library not configured · add files to components_library and update manifest.json';
-   hostedLibraryLastResult={ok:0,updated:0,bad:0,missing:true};
-   return hostedLibraryLastResult;
-  }
+  if(mr.status===404){if(status)status.textContent='Online library not configured · add files to components_library and update manifest.json';hostedLibraryLastResult={ok:0,updated:0,bad:0,missing:true};return hostedLibraryLastResult}
   if(!mr.ok)throw new Error('Manifest request failed ('+mr.status+').');
-  const manifest=await mr.json();
-  const entries=Array.isArray(manifest)?manifest:(manifest.files||manifest.components||manifest.assets||[]);
+  const manifest=await mr.json(),entries=Array.isArray(manifest)?manifest:(manifest.files||manifest.components||manifest.assets||[]);
   if(!Array.isArray(entries))throw new Error('manifest.json must contain a "files" array.');
-  if(entries.length>20000)throw new Error('The hosted library manifest contains too many files (maximum 20000). Split very large catalogues into smaller releases.');
-  const files=[],missing=[];const seen=new Set(),validEntries=[];
+  if(entries.length>20000)throw new Error('The hosted library manifest contains too many files (maximum 20000).');
+  const missing=[],seen=new Set(),validEntries=[];
   for(const entry of entries){
    const raw=typeof entry==='string'?entry:(entry&&(entry.path||entry.file||entry.name))||'';
    const rel=String(raw).trim().replace(/\\/g,'/').replace(/^\.\//,'');
    const parts=rel.split('/');
    if(!rel||rel.startsWith('/')||parts.some(x=>!x||x==='.'||x==='..')||! /\.(?:fcl|flc|zip)$/i.test(rel)){missing.push(String(raw||'(empty manifest entry)')+' · invalid path/type');continue}
-   if(seen.has(rel.toLowerCase()))continue;seen.add(rel.toLowerCase());validEntries.push({rel,parts});
+   if(seen.has(rel.toLowerCase()))continue;seen.add(rel.toLowerCase());
+   validEntries.push({rel,parts,signature:hostedEntrySignature(entry,rel)});
   }
-  const fetchBatchSize=12;
-  for(let start=0;start<validEntries.length;start+=fetchBatchSize){
-   const batch=validEntries.slice(start,start+fetchBatchSize);
+  const cached=await hostedCacheAll(),cacheMap=new Map(cached.map(x=>[hostedCacheKey(x.path),x]));
+  const todo=validEntries.filter(x=>{const old=cacheMap.get(hostedCacheKey(x.rel));return !old||!old.blob||!old.blob.size||old.signature!==x.signature||(forceRefresh&&x.signature.startsWith('unversioned:'))});
+  let downloaded=0,failed=0,processed=0;
+  if(firstLoad)hostedProgress(true,'Downloading your component library','First-time setup: downloading and saving the online library to this device…',0,validEntries.length);
+  const batchSize=8;
+  for(let start=0;start<todo.length;start+=batchSize){
+   const batch=todo.slice(start,start+batchSize);
    const results=await Promise.all(batch.map(async item=>{
     try{
-     const assetUrl=new URL(item.parts.map(encodeURIComponent).join('/'),manifestUrl);
+     const assetUrl=new URL(item.parts.map(encodeURIComponent).join('/').join('/'),manifestUrl);
      if(assetUrl.origin!==manifestUrl.origin||!assetUrl.pathname.startsWith(manifestUrl.pathname.replace(/manifest\.json$/,'')))throw new Error('Path is outside components_library.');
      const fr=await fetch(assetUrl.href,{cache:'no-store',credentials:'same-origin'});
      if(!fr.ok)throw new Error('HTTP '+fr.status);
      const blob=await fr.blob();if(!blob.size)throw new Error('File is empty');
-     return{file:new File([blob],item.parts[item.parts.length-1],{type:'application/octet-stream',lastModified:Date.now()})};
+     await hostedCachePut({path:item.rel,signature:item.signature,blob,name:item.parts[item.parts.length-1],size:blob.size,savedAt:Date.now()});
+     return{ok:true};
     }catch(e){return{error:item.rel+' · '+(e&&e.message||e)}}
    }));
-   for(const result of results){if(result.file)files.push(result.file);else if(result.error)missing.push(result.error)}
-   if(status)status.textContent='Loading online component library… '+Math.min(start+batch.length,validEntries.length)+' / '+validEntries.length;
+   for(const x of results){if(x.ok)downloaded++;else{failed++;missing.push(x.error)}}
+   processed+=batch.length;
+   if(status)status.textContent='Saving online component library… '+processed+' / '+todo.length;
+   if(firstLoad)hostedProgress(true,'Downloading your component library','Saving downloaded components locally…',Math.min(validEntries.length-todo.length+processed,validEntries.length),validEntries.length);
   }
-  let result={ok:0,updated:0,bad:0};
-  if(files.length)result=await importFiles(files);
-  result.missing=missing.length;result.total=entries.length;hostedLibraryLastResult=result;
-  if(status)status.textContent='Online library · '+(result.ok+result.updated)+' component(s) loaded'+(missing.length?' · '+missing.length+' file(s) unavailable':'')+'. Custom imports are still available.';
+  // Re-import from IndexedDB so both new downloads and previously cached components are present.
+  const all=await hostedCacheAll(),files=all.filter(x=>x.blob&&x.blob.size).map(x=>new File([x.blob],x.name||x.path.split('/').pop(),{type:'application/octet-stream',lastModified:x.savedAt||Date.now()}));
+  let result={ok:0,updated:0,bad:0};if(files.length)result=await importFiles(files);
+  result.downloaded=downloaded;result.failed=failed;result.missing=missing.length;result.total=validEntries.length;hostedLibraryLastResult=result;hostedLibraryReady=true;
+  if(status)status.textContent='Online library · '+files.length+' file(s) saved locally'+(failed?' · '+failed+' file(s) unavailable':'')+'. Custom imports are preserved.';
+  if(firstLoad){hostedProgress(true,'Component library ready',failed?'Some files could not be downloaded. You can retry them using Refresh online library.':'Your component library is downloaded and saved on this device.',validEntries.length-failed,validEntries.length);setTimeout(()=>hostedProgress(false),failed?3500:1200)}
   if(missing.length)console.warn('Panel Craft hosted library: some manifest entries could not be loaded.',missing);
-  if(!silent&&files.length===0&&entries.length)note('Online library could not load any listed files. Check the paths and exact filename case in components_library/manifest.json.',1);
-  else if(!silent&&files.length)note('Online component library refreshed: '+(result.ok+result.updated)+' component record(s) loaded.'+(missing.length?' '+missing.length+' asset(s) were unavailable.':''),missing.length>0);
+  if(!silent&&files.length)note('Online library refreshed: '+downloaded+' file(s) downloaded; '+failed+' unavailable. Existing personal imports are preserved.',failed>0);
+  else if(!silent&&failed)note('Library refresh completed with '+failed+' unavailable file(s). Refresh again to retry.',1);
   return result;
  }catch(e){
   hostedLibraryLastResult={ok:0,updated:0,bad:1,error:e&&e.message||String(e)};
-  if(status)status.textContent='Online library unavailable · '+hostedLibraryLastResult.error+' · Use Import library for local files.';
+  if(status)status.textContent='Online library unavailable · '+hostedLibraryLastResult.error+' · Cached library and personal imports are retained.';
   console.warn('Hosted component library load failed:',e);
-  if(!silent)note('Could not load the online component library: '+hostedLibraryLastResult.error+'. Local Import library remains available.',1);
+  if(firstLoad)hostedProgress(true,'Library download paused',hostedLibraryReady?'Your saved library is available. Online updates could not be checked.':'The online library could not be downloaded. Check your connection, then use Refresh online library.',0,0);
+  if(!silent)note('Could not refresh the online component library: '+hostedLibraryLastResult.error+'. Cached and personal components are retained.',1);
   return hostedLibraryLastResult;
- }finally{
-  hostedLibraryLoading=false;
-  if(button){button.disabled=false;button.textContent=oldText||'Refresh online library'}
- }
+ }finally{hostedLibraryLoading=false;if(button){button.disabled=false;button.textContent=oldText||'Refresh online library'}}
 }
-$('bReloadHostedLibrary').onclick=()=>loadHostedComponentLibrary({silent:false});
-
+$('bReloadHostedLibrary').onclick=()=>loadHostedComponentLibrary({silent:false,forceRefresh:true});
 /* ---------- component panel, copies, rails ---------- */
 const cpv=(id,fn)=>$(id).onchange=()=>{const it=ci();if(it){if(id==='cwid'&&(it.kind==='rail'||it.kind==='duct')&&it.scaleLocked!==false){syncPanel();note('Unlock the '+(it.kind==='rail'?'DIN rail':'wire duct')+' length before changing its length.',1);return}fn(it,+$(id).value);syncDoorPartsFromItems();render();fillDoorSelectors();renderDoorLists()}};
 $('ctag').oninput=()=>{const it=ci();if(it){it.tag=$('ctag').value;syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists();render()}};
@@ -2366,7 +2401,7 @@ $('cok').onclick=async()=>{if(!ccut)return;const mw=+$('cwmm').value,mh=+$('chmm
  const L={id:uid++,name:$('cnm').value||'Custom component',cat:$('ccat').value||'Custom',src:ccut.toDataURL('image/png'),w:ccut.width,h:ccut.height,terms,def:JSON.parse(JSON.stringify(terms)),mw,mh,est:false,custom:true,len:0};
  lib.push(L);const saved=await saveCustom(L);dirty=true;drawLib();$('cdl').classList.remove('on');note('Added '+L.name+' ('+mw+' × '+mh+' mm)'+(saved?' and saved to the connected component library.':' to browser storage only. Connect a writable project folder or components_library folder to save a compatible .fcl file.'),!saved)};
 addEventListener('paste',e=>{const f=[...(e.clipboardData?e.clipboardData.files:[])].find(f=>f.type.startsWith('image/'));if(f){e.preventDefault();fileToCust(f)}});
-const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('panelbuilder',3);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('c'))d.createObjectStore('c',{keyPath:'k'});if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'k'});if(!d.objectStoreNames.contains('assets'))d.createObjectStore('assets',{keyPath:'k'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('panelbuilder',4);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('c'))d.createObjectStore('c',{keyPath:'k'});if(!d.objectStoreNames.contains('settings'))d.createObjectStore('settings',{keyPath:'k'});if(!d.objectStoreNames.contains('assets'))d.createObjectStore('assets',{keyPath:'k'});if(!d.objectStoreNames.contains('hostedLibrary'))d.createObjectStore('hostedLibrary',{keyPath:'path'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 const idbReq=req=>new Promise((res,rej)=>{req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)});
 async function getSetting(k){const d=await idb();return await idbReq(d.transaction('settings').objectStore('settings').get(k))}
 async function putSetting(k,v){const d=await idb();const tx=d.transaction('settings','readwrite');tx.objectStore('settings').put({k,v});return new Promise((res,rej)=>{tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
@@ -2469,9 +2504,10 @@ async function restoreAutosave(){
 async function initPersistentLibrary(){
  try{
   await loadCachedCustoms();
-  // Load the public Netlify component catalogue before restoring autosaved drawings,
-  // so saved component references can resolve immediately on first visit.
-  await loadHostedComponentLibrary({silent:true});
+  // Restore the locally cached online catalogue immediately; only first-time users wait for download.
+  const cachedHosted=await loadCachedHostedLibrary();
+  if(!cachedHosted.files)hostedProgress(true,'Downloading your component library','First-time setup: please wait while the component library downloads…',0,0);
+  await loadHostedComponentLibrary({silent:true,firstLoad:!cachedHosted.files});
   try{const savedFile=await getSetting('projectSaveFileHandle');if(savedFile&&savedFile.v&&savedFile.v.kind==='file')projectSaveFileHandle=savedFile.v}catch(e){console.warn('Saved project-file handle unavailable',e)}const rec=await getSetting('projectRoot'),root=rec&&rec.v;
   if(root){let perm='prompt';try{perm=await root.queryPermission({mode:'readwrite'})}catch(e){}
    if(perm==='granted'){await connectProject(root,true)}
