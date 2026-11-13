@@ -6,11 +6,20 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "background_color": "#0b0b1a",
   "theme_color": "#101a2c",
   "icons": [
+    {
+      "src": "/icons/panel-craft-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icons/panel-craft.svg",
       "sizes": "any",
