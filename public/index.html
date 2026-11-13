@@ -2005,7 +2005,7 @@ syncFerruleUI();$('col').onchange=()=>{if(wireDraw)wireDraw.c=$('col').value;if(
   const end=e=>{if(!moving||moving.id!==e.pointerId)return;moving=null;try{const wr=wrap.getBoundingClientRect(),tr=tray.getBoundingClientRect();localStorage.setItem('wireTrayPos',JSON.stringify({x:Math.max(0,tr.left-wr.left),y:Math.max(0,tr.top-wr.top)}))}catch(err){}};handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
  })();
 $('bText').onclick=()=>{const v=prompt('Label text (e.g. 16A MCB)');if(v){const r=cv.getBoundingClientRect();texts.push({id:uid++,x:(r.width/2-view.x)/view.k,y:(r.height/3-view.y)/view.k,v});render()}};
-function fitWorkspace(){ensurePlates();ensureDoors();const ds=doors.filter(d=>d.enabled!==false).map(d=>doorRectWorld(d.id)),gr=glandPlate.enabled?glandRectWorld():null,rs=plates.map(p=>plateRectWorld(p.id)),allRects=[...rs,...ds];let x0=Math.min(...allRects.map(d=>d.x)),y0=Math.min(...allRects.map(d=>d.y)),x1=Math.max(...allRects.map(d=>d.x+d.w)),y1=Math.max(...allRects.map(d=>d.y+d.h));if(gr){x0=Math.min(x0,gr.x);y0=Math.min(y0,gr.y);x1=Math.max(x1,gr.x+gr.w);y1=Math.max(y1,gr.y+gr.h)}rs.forEach(p=>{x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x+p.w);y1=Math.max(y1,p.y+p.h)});items.forEach(it=>{const b=bb(it);x0=Math.min(x0,b.x0);y0=Math.min(y0,b.y0);x1=Math.max(x1,b.x1);y1=Math.max(y1,b.y1)});const r=cv.getBoundingClientRect(),pad=70,bw=Math.max(1,x1-x0),bh=Math.max(1,y1-y0),k=Math.max(.08,Math.min(1.8,(r.width-pad*2)/bw,(r.height-pad*2)/bh));view={k,x:(r.width-bw*k)/2-x0*k,y:(r.height-bh*k)/2-y0*k};render()}
+function fitWorkspace(){ensurePlates();ensureDoors();const ds=doors.filter(d=>d.enabled!==false).map(d=>doorRectWorld(d.id)),gr=glandPlate.enabled?glandRectWorld():null,rs=plates.map(p=>plateRectWorld(p.id)),allRects=[...rs,...ds];let x0=Math.min(...allRects.map(d=>d.x)),y0=Math.min(...allRects.map(d=>d.y)),x1=Math.max(...allRects.map(d=>d.x+d.w)),y1=Math.max(...allRects.map(d=>d.y+d.h));if(gr){x0=Math.min(x0,gr.x);y0=Math.min(y0,gr.y);x1=Math.max(x1,gr.x+gr.w);y1=Math.max(y1,gr.y+gr.h)}rs.forEach(p=>{x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x+p.w);y1=Math.max(y1,p.y+p.h)});items.forEach(it=>{const b=bb(it);x0=Math.min(x0,b.x0);y0=Math.min(y0,b.y0);x1=Math.max(x1,b.x1);y1=Math.max(y1,b.y1)});const r=cv.getBoundingClientRect(),pad=window.innerWidth<=780?105:70,bw=Math.max(1,x1-x0),bh=Math.max(1,y1-y0),k=Math.max(.08,Math.min(1.8,(r.width-pad*2)/bw,(r.height-pad*2)/bh));view={k,x:(r.width-bw*k)/2-x0*k,y:(r.height-bh*k)/2-y0*k};render()}
 $('bFit').onclick=fitWorkspace;
 /* ---------- save / load / export ---------- */
 function startBrowserDownload(blob,name){
@@ -2129,7 +2129,7 @@ async function importFiles(files){let ok=0,updated=0,dup=0,bad=0,i=0;const have=
  const add=(buf,handle=null,filename='')=>{try{const r=readFcl(buf);if(!r){bad++;return}const m=r.m,k=(m.cat||'Other')+'|'+(m.name||'Unnamed component'),existing=have.get(k),sz=sizeFor(m,k),src=obj(r.png),L={...(existing||{}),id:existing?existing.id:uid++,name:m.name||'Unnamed component',cat:m.cat||'Other',src,w:m.w||r.png.length,h:m.h||1,...sz,def:m.terms||[],terms:tov[k]||m.terms||[],author:m.author,copyright:m.copyright,len:r.png.length,meta:m,fileHandle:handle|| (existing&&existing.fileHandle)||null,sourceFileName:filename|| (existing&&existing.sourceFileName)||''};
   if(existing){if(existing.src&&String(existing.src).startsWith('blob:'))URL.revokeObjectURL(existing.src);Object.assign(existing,L);updated++}else{lib.push(L);have.set(k,L);ok++}}
  catch(e){bad++}};
- for(const entry of files){i++;if(i%25===0){note('Importing '+i+' / '+files.length+' ...');await new Promise(r=>setTimeout(r))}try{const f=entry&&entry.file?entry.file:entry,handle=entry&&entry.file?entry.handle:null,filename=entry&&entry.file?(entry.rel||f.name):f.name,buf=await f.arrayBuffer(),u=new Uint8Array(buf,0,2);if(u[0]===80&&u[1]===75){for(const b of await unzip(buf))add(b,null,'')}else add(buf,handle,filename)}catch(e){bad++}}
+ for(const entry of files){i++;if(i%8===0){note('Importing '+i+' / '+files.length+' components…');await new Promise(r=>setTimeout(r))}try{const f=entry&&entry.file?entry.file:entry,handle=entry&&entry.file?entry.handle:null,filename=entry&&entry.file?(entry.rel||f.name):f.name,buf=await f.arrayBuffer(),u=new Uint8Array(buf,0,2);if(u[0]===80&&u[1]===75){for(const b of await unzip(buf))add(b,null,'')}else add(buf,handle,filename)}catch(e){bad++}}
  dirty=true;lim=60;drawLib();
  const summary='Library: '+ok+' added, '+updated+' refreshed'+(dup?', '+dup+' already present':'')+(bad?', '+bad+' files skipped':'')+'.';
  note(summary+(!ok&&!updated&&bad?' The files were found, but none matched the FCL1 library format. Import compatible .fcl/.flc files or the ZIP exported by Component Extractor.':''),!ok&&!updated&&bad);
@@ -2204,12 +2204,12 @@ async function loadHostedComponentLibrary({silent=false,forceRefresh=false,first
   const todo=validEntries.filter(x=>{const old=cacheMap.get(hostedCacheKey(x.rel));return !old||!old.blob||!old.blob.size||old.signature!==x.signature||(forceRefresh&&x.signature.startsWith('unversioned:'))});
   let downloaded=0,failed=0,processed=0;
   if(firstLoad)hostedProgress(true,'Downloading your component library','First-time setup: downloading and saving the online library to this device…',0,validEntries.length);
-  const batchSize=8;
+  const batchSize=window.matchMedia('(max-width:780px)').matches?3:8;
   for(let start=0;start<todo.length;start+=batchSize){
    const batch=todo.slice(start,start+batchSize);
    const results=await Promise.all(batch.map(async item=>{
     try{
-     const assetUrl=new URL(item.parts.map(encodeURIComponent).join('/').join('/'),manifestUrl);
+     const assetUrl=new URL(item.parts.map(encodeURIComponent).join('/'),manifestUrl);
      if(assetUrl.origin!==manifestUrl.origin||!assetUrl.pathname.startsWith(manifestUrl.pathname.replace(/manifest\.json$/,'')))throw new Error('Path is outside components_library.');
      const fr=await fetch(assetUrl.href,{cache:'no-store',credentials:'same-origin'});
      if(!fr.ok)throw new Error('HTTP '+fr.status);
@@ -2813,4 +2813,25 @@ $('pcLicenseSignOut').addEventListener('click',()=>{if(!confirm('Sign out of Pan
 setInterval(()=>{if(appBooted&&document.visibilityState!=='hidden')verifySession({quiet:true})},15*60*1000);
 })();
 </script>
+<style id="r45-mobile-viewport-fit">
+html,body{margin:0;width:100%;max-width:100%;overflow:hidden}
+@media(max-width:780px){
+ html,body{height:100%;height:100dvh;min-height:0;max-height:100dvh;overflow:hidden;overscroll-behavior:none}
+ body{position:fixed;inset:0;width:100vw;max-width:100vw}
+ #bar.glass-toolbar{left:0;right:0;max-width:100vw;min-width:0;overflow:hidden;padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right))}
+ #bar .toolbar-primary,#bar .toolbar-secondary{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+ #main{width:100%;max-width:100vw;min-width:0;min-height:0;overflow:hidden}
+ #wrap{position:relative;width:100%;max-width:100vw;min-width:0;min-height:0;overflow:hidden}
+ #cv{display:block;width:100%;max-width:100%;height:100%;touch-action:none}
+ #side{left:max(8px,env(safe-area-inset-left));right:auto;top:112px;bottom:max(8px,env(safe-area-inset-bottom));width:min(88vw,350px);max-width:calc(100vw - 16px);min-width:0;overflow:hidden}
+ #side #sq{width:100%;min-width:0}
+ #side #q{width:1%;min-width:0;flex:1 1 auto}
+ #side #lib{min-width:0;max-width:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+ #side .res{max-width:100%;min-width:0}
+ #side .rt{min-width:0;overflow-wrap:anywhere}
+ #cp,#wp,#pp,#wireTray,#doorArrange{max-width:calc(100vw - 16px);min-width:0}
+ .dlg{max-width:100vw;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+ .dlg .box{max-width:100%;min-width:0}
+}
+</style>
 </body></html>
