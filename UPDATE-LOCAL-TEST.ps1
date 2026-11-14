@@ -101,27 +101,12 @@ try {
 
     Write-Host ("Updated {0} project files. The component library was not downloaded or copied." -f $downloaded) -ForegroundColor Green
 
-    if (Get-Command npm -ErrorAction SilentlyContinue) {
-        Write-Host ''
-        Write-Host 'Refreshing the component library manifest using the library already on this PC...' -ForegroundColor Cyan
-        Push-Location $ProjectRoot
-        try {
-            & npm run build
-            if ($LASTEXITCODE -ne 0) {
-                throw 'The Panel Craft build step failed. Review the message above.'
-            }
-        }
-        finally {
-            Pop-Location
-        }
-    }
-    else {
-        Write-Host 'npm was not found; skipped the manifest build. Run START-LOCAL-TEST.bat to start the app.' -ForegroundColor Yellow
-    }
+    Write-Host ''
+    Write-Host 'The component library folder was not downloaded, copied, rebuilt, or modified.' -ForegroundColor Green
 
     Write-Host ''
     Write-Host 'Panel Craft has been updated in this folder.' -ForegroundColor Green
-    Write-Host 'Your existing public\components_library folder was preserved.'
+    Write-Host 'Your existing public\components_library folder was left completely untouched.'
     Write-Host 'Your node_modules, .git, and .netlify folders were also left untouched.'
     Write-Host 'Start the app using START-LOCAL-TEST.bat.'
 }
