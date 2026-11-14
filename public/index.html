@@ -1416,7 +1416,6 @@ function render(){
   if(it.kind==='rail'){el('rect',{x:-w/2,y:-h/2,width:w,height:h,fill:'#c9ccd1',stroke:'#7d8087','stroke-width':1.5},gI);for(let x=-w/2+24;x<w/2-30;x+=60)el('rect',{x,y:-h*.14,width:30,height:h*.28,rx:h*.14,fill:'#8e9198'},gI)}
   else if(it.kind==='duct'){el('rect',{x:-w/2,y:-h/2,width:w,height:h,fill:'#dde3e8',stroke:'#8b95a0','stroke-width':1.5},gI);for(let x=-w/2+32;x<w/2;x+=32)el('line',{x1:x,y1:-h/2,x2:x,y2:h/2,stroke:'#aab3bb'},gI)}
   else el('image',{href:L.src,x:-w/2,y:-h/2,width:w,height:h,preserveAspectRatio:'none'},gI);
-  if(ov.has(it.id))el('rect',{x:-w/2,y:-h/2,width:w,height:h,fill:'#d6282822',stroke:'#d62828','stroke-width':2,'stroke-dasharray':'6 3','vector-effect':'non-scaling-stroke','pointer-events':'none'},gI);
   // A single faint outline marks the selected component in both edit and view-only modes.
   // Multi-selection keeps its separate blue dashed outline.
   if(multiSel.has(it.id))el('rect',{x:-w/2-3/k,y:-h/2-3/k,width:w+6/k,height:h+6/k,rx:3/k,fill:'#2a7fff10',stroke:'#60a5fa','stroke-width':2,'stroke-dasharray':'5 3','vector-effect':'non-scaling-stroke','pointer-events':'none'},gI);
@@ -1624,8 +1623,7 @@ function drawLib(){
   btn.onclick=()=>{cat=c;lim=60;drawLib()};ch.appendChild(btn)
  });
  $('meta').textContent=lib.length?res.length+' of '+lib.length+' components':'Library is empty. Tap "Import library".';
- // One delegated click listener on the scroll container handles both the whole card
- // and its explicit ADD button. This avoids iOS pointerup/drag suppression.
+ // A single card click/tap adds the component on desktop and mobile; desktop drag-and-drop remains available.
  if(!box.dataset.panelCraftAddHandler){
   box.dataset.panelCraftAddHandler='1';
   box.addEventListener('click',e=>{
@@ -1644,7 +1642,7 @@ function drawLib(){
   d.className='res';d.title=L.copyright||L.name;d.dataset.libId=String(L.id);d.setAttribute('role','button');d.tabIndex=0;
   const touchLibraryUi=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches;
   d.draggable=!touchLibraryUi;
-  d.innerHTML='<div class="th"><img loading="lazy"></div><div class="rt"><b></b><span></span></div><button class="pc-lib-add" type="button" tabindex="-1" aria-label="Add '+String(L.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">ADD</button>';
+  d.innerHTML='<div class="th"><img loading="lazy"></div><div class="rt"><b></b><span></span></div>';
   const img=d.querySelector('img');img.src=L.src;
   d.querySelector('b').textContent=L.name;
   d.querySelector('span').textContent=L.cat+' · '+L.mw+' × '+L.mh+' mm'+(L.est?' (size est.)':'');
@@ -3148,13 +3146,5 @@ html,body{max-width:100%;overflow:hidden}
  #side .res{touch-action:pan-y!important;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:pointer}
  #side .res:active{transform:none}
  #side .res .th img{pointer-events:none;-webkit-user-drag:none}
-}
-</style><style id="r50-library-explicit-add-action">
-@media(max-width:780px){
- #side .res{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:9px;touch-action:pan-y!important}
- #side .res .pc-lib-add{display:grid;place-items:center;min-width:44px;min-height:40px;padding:5px 7px;border:1px solid rgba(132,177,255,.5);border-radius:10px;background:linear-gradient(135deg,#168fff,#0875e8);color:#fff;font:800 10px/1 system-ui,sans-serif;touch-action:manipulation}
-}
-@media(min-width:781px){
- #side .res .pc-lib-add{display:none}
 }
 </style></body></html>
