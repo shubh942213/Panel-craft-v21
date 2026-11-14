@@ -25,7 +25,7 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $branch = 'local-testing'
-    $apiUrl = 'https://api.github.com/repos/shubh942213/Panel-craft-v21/git/trees/' + $branch + '?recursive=1'
+    $repoApi = 'https://api.github.com/repos/shubh942213/Panel-craft-v21'
     $headers = @{
         'User-Agent' = 'PanelCraft-Local-Updater'
         'Accept' = 'application/vnd.github+json'
@@ -33,11 +33,18 @@ try {
 
     Write-Host ''
     Write-Host 'Checking the latest Panel Craft update...' -ForegroundColor Cyan
-    $tree = Invoke-RestMethod -UseBasicParsing -Uri $apiUrl -Headers $headers
+    $branchInfo = Invoke-RestMethod -UseBasicParsing -Uri ($repoApi + '/branches/' + $branch) -Headers $headers
+    $commitSha = [string]$branchInfo.commit.sha
+    $treeSha = [string]$branchInfo.commit.commit.tree.sha
+    if (!$commitSha -or !$treeSha) {
+        throw 'Could not resolve the latest Panel Craft branch revision.'
+    }
+
+    $tree = Invoke-RestMethod -UseBasicParsing -Uri ($repoApi + '/git/trees/' + $treeSha + '?recursive=1') -Headers $headers
     if ($tree.truncated) {
         throw 'GitHub returned an incomplete file list. No local files were changed.'
     }
-    if (!$tree.sha -or !$tree.tree) {
+    if (!$tree.sha -or $tree.sha -ne $treeSha -or !$tree.tree) {
         throw 'Could not read the Panel Craft update file list.'
     }
 
@@ -54,7 +61,7 @@ try {
     Write-Host ("Component library skipped: {0} files ({1:N1} MB)." -f $libraryFiles.Count, (($libraryFiles | Measure-Object -Property size -Sum).Sum / 1MB)) -ForegroundColor DarkGray
     Write-Host ("Downloading {0} other project files ({1:N1} KB)..." -f $files.Count, (($files | Measure-Object -Property size -Sum).Sum / 1KB)) -ForegroundColor Cyan
 
-    $rawBase = 'https://raw.githubusercontent.com/shubh942213/Panel-craft-v21/' + $tree.sha + '/'
+    $rawBase = 'https://raw.githubusercontent.com/shubh942213/Panel-craft-v21/' + $commitSha + '/'
     $downloaded = 0
 
     foreach ($item in $files) {
