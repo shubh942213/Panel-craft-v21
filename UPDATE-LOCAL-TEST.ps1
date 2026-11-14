@@ -52,7 +52,8 @@ try {
     # by this updater and are deliberately never downloaded or overwritten.
     $files = @($tree.tree | Where-Object {
         $_.type -eq 'blob' -and
-        -not ([string]$_.path).StartsWith('public/components_library/', [StringComparison]::OrdinalIgnoreCase)
+        -not ([string]$_.path).StartsWith('public/components_library/', [StringComparison]::OrdinalIgnoreCase) -and
+        [string]$_.path -ne 'UPDATE-LOCAL-TEST.bat'
     })
     $libraryFiles = @($tree.tree | Where-Object {
         $_.type -eq 'blob' -and ([string]$_.path).StartsWith('public/components_library/', [StringComparison]::OrdinalIgnoreCase)
@@ -61,7 +62,6 @@ try {
     Write-Host ("Component library skipped: {0} files ({1:N1} MB)." -f $libraryFiles.Count, (($libraryFiles | Measure-Object -Property size -Sum).Sum / 1MB)) -ForegroundColor DarkGray
     Write-Host ("Downloading {0} other project files ({1:N1} KB)..." -f $files.Count, (($files | Measure-Object -Property size -Sum).Sum / 1KB)) -ForegroundColor Cyan
 
-    $rawBase = 'https://raw.githubusercontent.com/shubh942213/Panel-craft-v21/' + $commitSha + '/'
     $downloaded = 0
 
     foreach ($item in $files) {
@@ -79,8 +79,13 @@ try {
             New-Item -ItemType Directory -Path $sourceDir -Force | Out-Null
         }
 
-        Invoke-WebRequest -UseBasicParsing -Uri ($rawBase + $encodedPath) -OutFile $sourceFile
-        $actualSize = (Get-Item -LiteralPath $sourceFile).Length
+        $blob = Invoke-RestMethod -UseBasicParsing -Uri ($repoApi + '/git/blobs/' + [string]$item.sha) -Headers $headers
+        if ($blob.encoding -ne 'base64' -or !$blob.content) {
+            throw ("GitHub did not return base64 content for {0}." -f $relativePath)
+        }
+        $bytes = [Convert]::FromBase64String(($blob.content -replace '\\s', ''))
+        [IO.File]::WriteAllBytes($sourceFile, $bytes)
+        $actualSize = $bytes.Length
         if ($null -ne $item.size -and $actualSize -ne [int64]$item.size) {
             throw ("Download size mismatch for {0}. Expected {1} bytes, received {2} bytes." -f $relativePath, $item.size, $actualSize)
         }
@@ -103,6 +108,7 @@ try {
 
     Write-Host ''
     Write-Host 'The component library folder was not downloaded, copied, rebuilt, or modified.' -ForegroundColor Green
+    Write-Host 'The updater BAT launcher was kept in place while it was running.' -ForegroundColor DarkGray
 
     Write-Host ''
     Write-Host 'Panel Craft has been updated in this folder.' -ForegroundColor Green
