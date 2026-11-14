@@ -9,6 +9,8 @@
     "@netlify/blobs": "11.1.1"
   },
   "scripts": {
-    "build": "node scripts/generate-library-manifest.mjs"
+    "build": "node scripts/generate-library-manifest.mjs",
+    "dev": "npx netlify-cli dev --dir public --port 8888 --no-open",
+    "dev:build": "npm run build && npm run dev"
   }
 }
