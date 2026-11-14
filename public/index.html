@@ -2914,12 +2914,30 @@ ensurePlates();refreshPlateSelectors();refreshDoorSelectorsSafe();syncDoorFlipBu
 <script>
 (()=>{
 'use strict';
-const API='/.netlify/functions/panelcraft-license';
+function isPanelCraftLocalTestHost(hostname){
+ const h=String(hostname||'').toLowerCase().replace(/^\[|\]$/g,'');
+ if(h==='localhost'||h.endsWith('.localhost')||h==='::1'||h.endsWith('.trycloudflare.com'))return true;
+ const p=h.split('.').map(Number);
+ if(p.length!==4||p.some(n=>!Number.isInteger(n)||n<0||n>255))return false;
+ return p[0]===10||p[0]===127||(p[0]===192&&p[1]===168)||(p[0]===172&&p[1]>=16&&p[1]<=31)||(p[0]===169&&p[1]===254);
+}
+const LOCAL_TEST_MODE=isPanelCraftLocalTestHost(location.hostname);
+const API=LOCAL_TEST_MODE?'/.netlify/functions/panelcraft-license-local':'/.netlify/functions/panelcraft-license';
+const LOCAL_TEST_KEY='PC21-LOCAL-TEST';
+const LOCAL_TEST_PHONE='9999999999';
 const TOKEN_KEY='panelcraft_auth_token_v1';
 const LICENSE_KEY='panelcraft_license_key_v1';
 const $=id=>document.getElementById(id);
 let appBooted=false,licenseInfo=null,requestBusy=false;
 const gate=$('pcLicenseGate');
+if(LOCAL_TEST_MODE){
+ const info=$('pcLicenseInfo');if(info)info.textContent='LOCAL TEST MODE — this is a local development copy, not a production license. Use the test credentials shown below. This test login never creates or changes a real customer license.';
+ const keyInput=$('pcLoginKey'),phoneInput=$('pcLoginPhone');
+ if(keyInput){keyInput.placeholder=LOCAL_TEST_KEY;if(!keyInput.value)keyInput.value=LOCAL_TEST_KEY}
+ if(phoneInput){phoneInput.placeholder=LOCAL_TEST_PHONE;if(!phoneInput.value)phoneInput.value=LOCAL_TEST_PHONE}
+ const eyebrow=$('pcLicenseEyebrow');if(eyebrow)eyebrow.textContent='Local development test login';
+ const heading=$('pcLicenseHeading');if(heading)heading.textContent='Open Panel Craft Test';
+}
 function storedToken(){try{return localStorage.getItem(TOKEN_KEY)||''}catch(_){return ''}}
 function storedKey(){try{return localStorage.getItem(LICENSE_KEY)||''}catch(_){return ''}}
 function storeAuth(token,key){try{localStorage.setItem(TOKEN_KEY,token);localStorage.setItem(LICENSE_KEY,key)}catch(e){throw new Error('Browser storage is blocked. Enable site storage and try again.')}}
@@ -2942,7 +2960,7 @@ function updateLicenseUi(data){
  const valid=exp&&!Number.isNaN(exp.getTime())?exp.toLocaleDateString()+' (expires)':'Lifetime';
  const put=(id,value)=>{const el=$(id);if(el)el.textContent=value||'—'};
  put('pcLicenseStatusText','ACTIVE');put('pcLicenseUserText',licenseInfo.userId||'—');put('pcLicenseKeyText',maskKey(licenseInfo.licenseKey||storedKey()));put('pcLicensePhoneText',licenseInfo.phoneLast4?'•••• '+licenseInfo.phoneLast4:'Bound phone verified');put('pcLicenseExpiryText',valid);
- const badge=$('pcLicenseBadge');if(badge){badge.textContent='LICENSE ACTIVE';badge.title='Panel Craft license verified'+(licenseInfo.userId?' · '+licenseInfo.userId:'')}
+ const badge=$('pcLicenseBadge');if(badge){badge.textContent=LOCAL_TEST_MODE?'LOCAL TEST MODE':'LICENSE ACTIVE';badge.title=LOCAL_TEST_MODE?'Local mock license only — no production license or customer binding is changed.':'Panel Craft license verified'+(licenseInfo.userId?' · '+licenseInfo.userId:'')}
 }
 function bootApp(){
  if(appBooted){gate.hidden=true;updateLicenseUi(licenseInfo);return}
