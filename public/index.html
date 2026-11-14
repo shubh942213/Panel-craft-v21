@@ -783,7 +783,7 @@ body{
  </div>
 </div>
 <div id="main"><div id="side">
-<div id="sq"><input id="q" type="search" placeholder="Search: e.g. 2 pole breaker, steck, c40" autocomplete="off"><button id="qx" title="Clear">✕</button></div>
+<div id="sq"><input id="q" type="search" placeholder="Search: e.g. 2 pole breaker, steck, c40" autocomplete="off"><button id="qx" type="button" title="Hide component library" aria-label="Hide component library">✕</button></div>
 <div id="chips"></div><div id="meta"></div><div id="msg"></div><div id="lib"></div></div>
 <div id="wrap"><svg id="cv"><defs><pattern id="gp" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--grid)"/></pattern></defs><g id="vw"><rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#gp)"/><g id="pl"></g><g id="itemLayer"></g><g id="wl"></g><g id="ductCoverLayer"></g><g id="tl"></g></g></svg>
 
@@ -1577,7 +1577,7 @@ function search(q){if(dirty)build();const qt=toks(q,0);let list;
   list=[];tot.forEach((o,id)=>{const L=lib.find(l=>l.id===id);if(L)list.push({L,full:o.n===qt.length,n:o.n,s:o.s})});
   list.sort((a,b)=>(b.full-a.full)||(b.n-a.n)||(b.s-a.s)||a.L.name.localeCompare(b.L.name,undefined,{numeric:true}))}
  return cat?list.filter(r=>r.L.cat===cat):list}
-let tmr;$('q').oninput=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{lim=60;drawLib()},120)};$('qx').onclick=()=>{$('q').value='';cat='';lim=60;drawLib()};
+let tmr;$('q').oninput=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{lim=60;drawLib()},120)};$('qx').onclick=()=>side(false);
 function showLibraryAddToast(text){
  let toast=$('pcLibraryAddToast');
  if(!toast){
@@ -3051,22 +3051,56 @@ html,body{max-width:100%;overflow:hidden}
  #viewInspector{max-width:calc(100vw - 16px)}
 }
 </style>
-<div id="pcMobileActionDock" aria-label="Movable undo and redo controls">
- <span id="pcDockGrip" role="button" tabindex="0" aria-label="Move undo and redo controls" title="Drag to move this toolbar">⠿</span>
- <button id="pcHistoryUndo" type="button" title="Undo" aria-label="Undo" disabled><b>↶</b><span>Undo</span></button>
- <button id="pcHistoryRedo" type="button" title="Redo" aria-label="Redo" disabled><b>↷</b><span>Redo</span></button>
- <button id="pcHistoryFit" type="button" title="Fit the panel and doors to the workspace" aria-label="Fit to screen"><b>⛶</b><span>Fit</span></button>
+<div id="pcMobileActionDock" aria-label="Undo and redo controls">
+ <div id="pcDockHead">
+  <span id="pcDockLabel">HISTORY</span>
+  <button id="pcDockToggle" type="button" aria-expanded="true" aria-label="Collapse undo and redo controls" title="Collapse controls">⌄</button>
+ </div>
+ <div id="pcDockControls">
+  <button id="pcHistoryUndo" type="button" title="Undo" aria-label="Undo" disabled><b>↶</b><span>Undo</span></button>
+  <button id="pcHistoryRedo" type="button" title="Redo" aria-label="Redo" disabled><b>↷</b><span>Redo</span></button>
+  <button id="pcHistoryFit" type="button" title="Fit the panel and doors to the workspace" aria-label="Fit to screen"><b>⛶</b><span>Fit</span></button>
+ </div>
 </div>
 <style id="pc-mobile-action-dock-css">
 #pcMobileActionDock{display:none}
 @media(max-width:780px){
- #pcMobileActionDock{position:fixed;z-index:9990;left:50%;bottom:calc(7px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:7px;width:max-content;max-width:calc(100vw - 20px);padding:13px 7px 7px;border:1px solid rgba(200,216,242,.25);border-radius:18px;background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc;touch-action:none;user-select:none;-webkit-user-select:none}
- #pcDockGrip{position:absolute;left:50%;top:2px;transform:translateX(-50%);display:grid;place-items:center;width:42px;height:10px;border-radius:8px;color:rgba(232,241,255,.72);font-size:15px;font-weight:900;line-height:8px;cursor:grab;touch-action:none}
- #pcDockGrip:active{color:#fff;cursor:grabbing}
- #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:56px;min-height:48px;padding:4px 10px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
- #pcMobileActionDock button b{font-size:21px;line-height:1}
- #pcMobileActionDock button:disabled{opacity:.35}
- #pcMobileActionDock button:active{background:rgba(116,134,242,.35)}
+ #pcMobileActionDock{
+  position:fixed;z-index:9990;right:12px;left:auto;top:auto;
+  bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:stretch;gap:6px;
+  width:max-content;max-width:calc(100vw - 24px);padding:8px;
+  border:1px solid rgba(200,216,242,.25);border-radius:18px;
+  background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc;
+  user-select:none;-webkit-user-select:none
+ }
+ #pcDockHead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:25px;padding:0 2px}
+ #pcDockLabel{font-size:9px;font-weight:800;letter-spacing:.13em;color:rgba(232,241,255,.66)}
+ #pcDockToggle{
+  display:grid;place-items:center;min-width:30px;min-height:27px;padding:0 8px;
+  border:1px solid rgba(193,211,240,.14);border-radius:9px;
+  background:rgba(255,255,255,.09);color:#f8fafc;font:800 17px/1 system-ui,sans-serif;
+  touch-action:manipulation
+ }
+ #pcDockControls{display:flex;align-items:center;justify-content:center;gap:7px}
+ #pcMobileActionDock #pcDockControls button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  flex:0 0 auto;min-width:56px;min-height:48px;padding:4px 10px;
+  border:1px solid rgba(193,211,240,.14);border-radius:12px;
+  background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;
+  touch-action:manipulation
+ }
+ #pcDockControls button b{font-size:21px;line-height:1}
+ #pcDockControls button:disabled{opacity:.35}
+ #pcDockControls button:active,#pcDockToggle:active{background:rgba(116,134,242,.35)}
+ #pcMobileActionDock.collapsed{width:48px;height:48px;padding:0;border-radius:16px;gap:0}
+ #pcMobileActionDock.collapsed #pcDockHead{width:100%;height:100%;min-height:0;justify-content:center;padding:0}
+ #pcMobileActionDock.collapsed #pcDockLabel,#pcMobileActionDock.collapsed #pcDockControls{display:none}
+ #pcMobileActionDock.collapsed #pcDockToggle{
+  width:100%;height:100%;min-height:46px;padding:0;border:0;border-radius:15px;
+  background:transparent;font-size:21px
+ }
 }
 </style><script id="panelCraftPwaBootstrap">
 (()=>{
@@ -3074,55 +3108,21 @@ html,body{max-width:100%;overflow:hidden}
  if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(err=>console.warn('Panel Craft PWA registration failed:',err)));
  }
- // A small grip handle lets the two persistent history controls be moved anywhere
- // within the visible viewport. Position is remembered on this device/browser.
- const dock=document.getElementById('pcMobileActionDock'),grip=document.getElementById('pcDockGrip');
- if(!dock||!grip)return;
- const POS_KEY='panelCraftUndoRedoDockPositionV2';
- const viewport=()=>({w:window.visualViewport?.width||window.innerWidth,h:window.visualViewport?.height||window.innerHeight});
- function clamp(left,top){
-  const r=dock.getBoundingClientRect(),v=viewport();
-  return{left:Math.max(8,Math.min(Math.max(8,v.w-r.width-8),left)),top:Math.max(8,Math.min(Math.max(8,v.h-r.height-8),top))};
+ const dock=document.getElementById('pcMobileActionDock'),toggle=document.getElementById('pcDockToggle');
+ if(!dock||!toggle)return;
+ const STATE_KEY='panelCraftUndoRedoDockCollapsedV1';
+ function setCollapsed(collapsed,persist=true){
+  dock.classList.toggle('collapsed',collapsed);
+  toggle.textContent=collapsed?'⌃':'⌄';
+  toggle.setAttribute('aria-expanded',collapsed?'false':'true');
+  toggle.setAttribute('aria-label',collapsed?'Show undo and redo controls':'Collapse undo and redo controls');
+  toggle.title=collapsed?'Show controls':'Collapse controls';
+  if(persist){try{localStorage.setItem(STATE_KEY,collapsed?'1':'0')}catch(_){}}
  }
- function setPosition(left,top,persist=false){
-  const p=clamp(left,top);
-  dock.style.left=p.left+'px';dock.style.top=p.top+'px';
-  dock.style.right='auto';dock.style.bottom='auto';dock.style.transform='none';
-  if(persist){try{localStorage.setItem(POS_KEY,JSON.stringify(p))}catch(_){}}
- }
- function restorePosition(){
-  try{
-   const p=JSON.parse(localStorage.getItem(POS_KEY)||'null');
-   if(p&&Number.isFinite(p.left)&&Number.isFinite(p.top))setPosition(p.left,p.top);
-  }catch(_){}
- }
- requestAnimationFrame(restorePosition);
- let moving=null;
- grip.addEventListener('pointerdown',e=>{
-  if(e.button!==undefined&&e.button!==0)return;
-  e.preventDefault();
-  const r=dock.getBoundingClientRect();
-  setPosition(r.left,r.top);
-  moving={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};
-  try{grip.setPointerCapture(e.pointerId)}catch(_){}
- });
- grip.addEventListener('pointermove',e=>{
-  if(!moving||moving.id!==e.pointerId)return;
-  setPosition(e.clientX-moving.dx,e.clientY-moving.dy);
- });
- function finishMove(e){
-  if(!moving||moving.id!==e.pointerId)return;
-  const r=dock.getBoundingClientRect();setPosition(r.left,r.top,true);moving=null;
- }
- grip.addEventListener('pointerup',finishMove);
- grip.addEventListener('pointercancel',finishMove);
- const keepInView=()=>{
-  if(moving)return;
-  const r=dock.getBoundingClientRect();setPosition(r.left,r.top,true);
- };
- window.addEventListener('resize',keepInView,{passive:true});
- window.addEventListener('orientationchange',()=>setTimeout(keepInView,180),{passive:true});
- if(window.visualViewport)window.visualViewport.addEventListener('resize',keepInView,{passive:true});
+ let initiallyCollapsed=false;
+ try{initiallyCollapsed=localStorage.getItem(STATE_KEY)==='1'}catch(_){}
+ setCollapsed(initiallyCollapsed,false);
+ toggle.addEventListener('click',()=>setCollapsed(!dock.classList.contains('collapsed')));
 })();
 </script><style id="r47-standalone-toolbar-and-library-offset">
 @media(max-width:780px){
