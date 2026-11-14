@@ -1579,48 +1579,85 @@ function search(q){if(dirty)build();const qt=toks(q,0);let list;
   list.sort((a,b)=>(b.full-a.full)||(b.n-a.n)||(b.s-a.s)||a.L.name.localeCompare(b.L.name,undefined,{numeric:true}))}
  return cat?list.filter(r=>r.L.cat===cat):list}
 let tmr;$('q').oninput=()=>{clearTimeout(tmr);tmr=setTimeout(()=>{lim=60;drawLib()},120)};$('qx').onclick=()=>{$('q').value='';cat='';lim=60;drawLib()};
-function drawLib(){const box=$('lib'),res=search($('q').value),cnt={};lib.forEach(l=>cnt[l.cat]=(cnt[l.cat]||0)+1);
- const ch=$('chips');ch.innerHTML='';[['',lib.length],...Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,25)].forEach(([c,n])=>{if(c===''&&!lib.length)return;const b=document.createElement('button');b.className='chip'+(cat===c?' on':'');b.textContent=(c||'All')+' '+n;b.onclick=()=>{cat=c;lim=60;drawLib()};ch.appendChild(b)});
+function showLibraryAddToast(text){
+ let toast=$('pcLibraryAddToast');
+ if(!toast){
+  toast=document.createElement('div');toast.id='pcLibraryAddToast';
+  toast.style.cssText='position:fixed;z-index:100000;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100vw - 32px);padding:11px 16px;border:1px solid rgba(255,255,255,.25);border-radius:13px;background:rgba(14,24,42,.97);color:#fff;font:700 13px/1.35 system-ui,sans-serif;box-shadow:0 10px 32px #0006;pointer-events:none;text-align:center;opacity:0;transition:opacity .15s';
+  document.body.appendChild(toast);
+ }
+ toast.textContent=text;toast.style.opacity='1';
+ clearTimeout(showLibraryAddToast.timer);
+ showLibraryAddToast.timer=setTimeout(()=>{toast.style.opacity='0'},2100);
+}
+function addLibraryComponentToWorkspace(componentId){
+ const L=lib.find(x=>String(x.id)===String(componentId));
+ if(!L){showLibraryAddToast('This component is no longer available. Refresh the library and try again.');return false}
+ // Adding a library component is an explicit edit action, so leave read-only mode first.
+ if(viewOnly)setViewOnly(false);
+ const add=()=>{
+  try{
+   const r=cv.getBoundingClientRect();
+   if(!r.width||!r.height)throw new Error('Workspace is not visible.');
+   const p={x:snap((r.width/2-view.x)/view.k),y:snap((r.height/2-view.y)/view.k)};
+   let z=zoneAtPoint(p)||$('placeZone')?.value||'plate';
+   if(z==='door'&&doorViewSide==='back'){const mapped=mapDoorPoint(p);p.x=mapped.x;p.y=mapped.y}
+   const before=items.length;
+   place(L.id,p.x,p.y,z);
+   if(items.length!==before+1)throw new Error('The component could not be inserted.');
+   showLibraryAddToast('Added '+L.name+' to the workspace.');
+  }catch(err){
+   console.error('Panel Craft component insertion failed:',err);
+   showLibraryAddToast('Could not add '+L.name+'. '+(err&&err.message||'Please try again.'));
+  }
+ };
+ if(innerWidth<900){side(false);requestAnimationFrame(()=>requestAnimationFrame(add))}
+ else add();
+ return true;
+}
+function drawLib(){
+ const box=$('lib'),res=search($('q').value),cnt={};lib.forEach(l=>cnt[l.cat]=(cnt[l.cat]||0)+1);
+ const ch=$('chips');ch.innerHTML='';
+ [['',lib.length],...Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,25)].forEach(([c,n])=>{
+  if(c===''&&!lib.length)return;
+  const btn=document.createElement('button');btn.className='chip'+(cat===c?' on':'');btn.textContent=(c||'All')+' '+n;
+  btn.onclick=()=>{cat=c;lim=60;drawLib()};ch.appendChild(btn)
+ });
  $('meta').textContent=lib.length?res.length+' of '+lib.length+' components':'Library is empty. Tap "Import library".';
+ // One delegated click listener on the scroll container handles both the whole card
+ // and its explicit ADD button. This avoids iOS pointerup/drag suppression.
+ if(!box.dataset.panelCraftAddHandler){
+  box.dataset.panelCraftAddHandler='1';
+  box.addEventListener('click',e=>{
+   const card=e.target.closest('.res[data-lib-id]');
+   if(!card||!box.contains(card))return;
+   e.preventDefault();e.stopPropagation();
+   addLibraryComponentToWorkspace(card.dataset.libId);
+  },true);
+ }
  box.innerHTML='';let sepDone=false;
- res.slice(0,lim).forEach(r=>{if(!r.full&&!sepDone&&$('q').value.trim()){sepDone=true;const s=document.createElement('div');s.className='sep';s.textContent='Partial matches';box.appendChild(s)}
-  const d=document.createElement('div'),L=r.L;d.className='res';d.title=L.copyright||L.name;d.setAttribute('role','button');d.tabIndex=0;
-  // Native HTML drag-and-drop on touch browsers can consume the tap before the
-  // component's click handler runs. Keep native dragging for mouse/desktop only.
+ res.slice(0,lim).forEach(r=>{
+  if(!r.full&&!sepDone&&$('q').value.trim()){
+   sepDone=true;const sep=document.createElement('div');sep.className='sep';sep.textContent='Partial matches';box.appendChild(sep)
+  }
+  const d=document.createElement('div'),L=r.L;
+  d.className='res';d.title=L.copyright||L.name;d.dataset.libId=String(L.id);d.setAttribute('role','button');d.tabIndex=0;
   const touchLibraryUi=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.matchMedia('(pointer:coarse)').matches;
   d.draggable=!touchLibraryUi;
-  d.style.touchAction='pan-y';
-  d.innerHTML=`<div class="th"><img src="${L.src}" loading="lazy"></div><div class="rt"><b></b><span></span></div>`;d.querySelector('b').textContent=L.name;d.querySelector('span').textContent=L.cat+' · '+L.mw+' × '+L.mh+' mm'+(L.est?' (size est.)':'');
+  d.innerHTML='<div class="th"><img loading="lazy"></div><div class="rt"><b></b><span></span></div><button class="pc-lib-add" type="button" tabindex="-1" aria-label="Add '+String(L.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'">ADD</button>';
+  const img=d.querySelector('img');img.src=L.src;
+  d.querySelector('b').textContent=L.name;
+  d.querySelector('span').textContent=L.cat+' · '+L.mw+' × '+L.mh+' mm'+(L.est?' (size est.)':'');
   d.ondragstart=e=>{if(touchLibraryUi){e.preventDefault();return}e.dataTransfer.setData('t',L.id)};
-  const addFromLibrary=()=>{
-   const r=cv.getBoundingClientRect();
-   let p={x:snap((r.width/2-view.x)/view.k),y:snap((r.height/2-view.y)/view.k)};
-   const z=zoneAtPoint(p)||$('placeZone')?.value||'plate';
-   if(z==='door'&&doorViewSide==='back')p=mapDoorPoint(p);
-   place(L.id,p.x,p.y,z);
-   if(innerWidth<900)side(false);
-  };
-  let touchOrigin=null,lastTouchAdd=0;
-  d.addEventListener('pointerdown',e=>{
-   if(e.pointerType==='touch'||e.pointerType==='pen')touchOrigin={id:e.pointerId,x:e.clientX,y:e.clientY,at:Date.now()};
-   else touchOrigin=null;
-  },{passive:true});
-  d.addEventListener('pointerup',e=>{
-   if(!touchOrigin||touchOrigin.id!==e.pointerId)return;
-   const start=touchOrigin;touchOrigin=null;
-   if(Date.now()-start.at>650||Math.hypot(e.clientX-start.x,e.clientY-start.y)>12)return;
-   e.preventDefault();e.stopPropagation();lastTouchAdd=Date.now();addFromLibrary();
-  });
-  d.addEventListener('pointercancel',()=>{touchOrigin=null});
-  d.onclick=e=>{
-   if(lastTouchAdd&&Date.now()-lastTouchAdd<900){e.preventDefault();return}
-   addFromLibrary();
-  };
-  d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();addFromLibrary()}};
-  box.appendChild(d)});
- if(res.length>lim){const b=document.createElement('button');b.textContent='Show more ('+(res.length-lim)+')';b.onclick=()=>{lim+=60;drawLib()};box.appendChild(b)}
- if(!res.length&&lib.length){const s=document.createElement('div');s.className='sep';s.textContent='No matches. Try fewer or simpler words.';box.appendChild(s)}}
-function place(id,x,y,zone=null){const L=lib.find(l=>l.id===id);if(!L)return;const hit=plateAtPoint({x,y}),z=zone||zoneAtPoint({x,y})||$('placeZone')?.value||'plate',pid=z==='plate'?(hit?.id||activePlateId):null,tag=z==='door'?'FD-'+String(items.filter(i=>i.zone==='door'&&!i.kind).length+1).padStart(2,'0'):'';multiSel.clear();marquee=null;const placed={id:uid++,lib:id,x:snap(x),y:snap(y),rot:0,w:L.mw,h:L.mh,scaleLocked:true,tag,zone:z,...(pid?{plateId:pid}:{}),...(z==='door'?{doorId:doorAtPoint({x,y})?.id||activeDoorId}:{})};items.push(placed);snapComponentToRail(placed);sel='i'+(uid-1);if(z==='door'){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists()}render();commit()}
+  box.appendChild(d)
+ });
+ if(res.length>lim){
+  const more=document.createElement('button');more.type='button';more.textContent='Show more ('+(res.length-lim)+')';more.onclick=()=>{lim+=60;drawLib()};box.appendChild(more)
+ }
+ if(!res.length&&lib.length){
+  const empty=document.createElement('div');empty.className='sep';empty.textContent='No matches. Try fewer or simpler words.';box.appendChild(empty)
+ }
+}function place(id,x,y,zone=null){const L=lib.find(l=>l.id===id);if(!L)return;const hit=plateAtPoint({x,y}),z=zone||zoneAtPoint({x,y})||$('placeZone')?.value||'plate',pid=z==='plate'?(hit?.id||activePlateId):null,tag=z==='door'?'FD-'+String(items.filter(i=>i.zone==='door'&&!i.kind).length+1).padStart(2,'0'):'';multiSel.clear();marquee=null;const placed={id:uid++,lib:id,x:snap(x),y:snap(y),rot:0,w:L.mw,h:L.mh,scaleLocked:true,tag,zone:z,...(pid?{plateId:pid}:{}),...(z==='door'?{doorId:doorAtPoint({x,y})?.id||activeDoorId}:{})};items.push(placed);snapComponentToRail(placed);sel='i'+(uid-1);if(z==='door'){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists()}render();commit()}
 function syncMobileDrawerTop(){
  if(window.innerWidth>780)return;
  const bar=$('bar'),main=$('main'),drawer=$('side');if(!bar||!main||!drawer)return;
@@ -3093,5 +3130,13 @@ html,body{max-width:100%;overflow:hidden}
  #side .res{touch-action:pan-y!important;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:pointer}
  #side .res:active{transform:none}
  #side .res .th img{pointer-events:none;-webkit-user-drag:none}
+}
+</style><style id="r50-library-explicit-add-action">
+@media(max-width:780px){
+ #side .res{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:9px;touch-action:pan-y!important}
+ #side .res .pc-lib-add{display:grid;place-items:center;min-width:44px;min-height:40px;padding:5px 7px;border:1px solid rgba(132,177,255,.5);border-radius:10px;background:linear-gradient(135deg,#168fff,#0875e8);color:#fff;font:800 10px/1 system-ui,sans-serif;touch-action:manipulation}
+}
+@media(min-width:781px){
+ #side .res .pc-lib-add{display:none}
 }
 </style></body></html>
