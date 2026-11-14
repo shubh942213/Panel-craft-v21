@@ -45,7 +45,7 @@ button{cursor:pointer}button.on,button.pri{background:var(--ac);color:#111;borde
 .t{fill:transparent;stroke:#2a7fff;stroke-width:1.5;cursor:crosshair}.t:hover,.t.s{fill:#2a7fffb0}
 .w{fill:none;stroke-width:3;stroke-linejoin:round;cursor:pointer}.w.s{stroke-dasharray:6 4}
 #wp,#pp,#cp{position:absolute;left:8px;right:8px;bottom:8px;background:var(--pn);border:1px solid var(--bd);border-radius:8px;padding:6px;display:flex;gap:6px;overflow-x:auto;align-items:center;font-size:13px}
-#wp[hidden],#pp[hidden],#cp[hidden]{display:none}#wp>*,#pp>*,#cp>*{flex:none}#wp input{width:88px}#cp input[type=number]{width:62px}#cp input[type=text]{width:80px}#cp label{display:flex;gap:3px;align-items:center}#sb{position:absolute;right:8px;top:6px;font-size:12px;color:var(--mu);background:var(--pn);padding:2px 8px;border-radius:6px;pointer-events:none;border:1px solid var(--bd)}.dlg{position:fixed;inset:0;background:#000a;display:none;z-index:20;overflow:auto;padding:10px}.dlg.on{display:block}.dlg .box{background:var(--pn);border-radius:10px;padding:12px;max-width:560px;margin:auto;display:grid;gap:8px}.dlg label{display:flex;gap:8px;align-items:center;justify-content:space-between}.dlg input,.dlg select{width:55%}.dlg input[type=checkbox]{width:auto}.dlg canvas{max-width:100%;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px;border:1px solid var(--bd)}
+#wp[hidden],#pp[hidden],#cp[hidden]{display:none}#wp>*,#pp>*,#cp>*{flex:none}#wp input{width:88px}#cp input[type=number]{width:62px}#cp input[type=text]{width:80px}#cp label{display:flex;gap:3px;align-items:center}#sb{display:none!important;position:absolute;right:8px;top:6px;font-size:12px;color:var(--mu);background:var(--pn);padding:2px 8px;border-radius:6px;pointer-events:none;border:1px solid var(--bd)}.dlg{position:fixed;inset:0;background:#000a;display:none;z-index:20;overflow:auto;padding:10px}.dlg.on{display:block}.dlg .box{background:var(--pn);border-radius:10px;padding:12px;max-width:560px;margin:auto;display:grid;gap:8px}.dlg label{display:flex;gap:8px;align-items:center;justify-content:space-between}.dlg input,.dlg select{width:55%}.dlg input[type=checkbox]{width:auto}.dlg canvas{max-width:100%;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px;border:1px solid var(--bd)}
 .hp{fill:#fff;stroke:#e8a800;stroke-width:2;cursor:grab}.hs{fill:#e8a800;stroke:#fff;stroke-width:1.5;cursor:move}.hp.on{fill:#ffe4e6;stroke:#e11d48;stroke-width:3}
 @media(max-height:520px){button,select,input{min-height:30px;padding:3px 8px}.th{width:44px;height:44px}}
 .placementPick{display:flex;gap:5px;align-items:center;white-space:nowrap;font-size:12px;color:var(--mu)}.placementPick select{min-height:32px;padding:4px 7px}#doorDlg .box{max-width:1180px;display:block}#doorDlg h3{font-size:14px;margin:0 0 10px}#doorDlg .doorCols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}#doorDlg .doorSection{border:1px solid var(--bd);border-radius:8px;padding:10px;min-width:0}#doorDlg label{display:flex;flex-direction:column;align-items:stretch;gap:3px;justify-content:flex-start;font-size:12px;color:var(--mu)}#doorDlg input,#doorDlg select{width:100%;min-width:0}#doorDlg .doorForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}#doorDlg .doorHint{font-size:11px;color:var(--mu);margin:8px 0;line-height:1.4}.doorRow{display:grid;grid-template-columns:1.25fr repeat(6,minmax(55px,.7fr)) auto;gap:5px;align-items:center;padding:6px 0;border-top:1px solid var(--bd);font-size:11px}.doorRow input{font-size:12px;padding:4px}.doorLinkRow{display:grid;grid-template-columns:1.2fr .65fr 1.2fr .65fr .7fr .6fr auto;gap:5px;align-items:center;padding:6px 0;border-top:1px solid var(--bd);font-size:11px}.doorRow button,.doorLinkRow button{padding:3px 7px;min-height:28px}@media(max-width:800px){#doorDlg .doorCols{grid-template-columns:1fr}.doorRow,.doorLinkRow{grid-template-columns:repeat(2,minmax(0,1fr))}.doorRow button,.doorLinkRow button{grid-column:span 2}}
@@ -1397,10 +1397,7 @@ function render(){
  laneOff=new Map();const grp=new Map();
  wires.forEach(w=>{if(w.pts)return;const a=tpos(w.a),b=tpos(w.b);if(!a||!b)return;const I=autoInner(a,b,0),h=a.d.y&&b.d.y?'h'+Math.round(I[1].y/3):a.d.x&&b.d.x?'v'+Math.round(I[1].x/3):null;if(h){if(!grp.has(h))grp.set(h,[]);grp.get(h).push(w.id)}});
  grp.forEach(ids=>{if(ids.length>1)ids.forEach((id,i)=>laneOff.set(id,(i-(ids.length-1)/2)*8))});
- ensurePlates();ensureDoors();const bbs=items.map(it=>({it,b:bb(it)}));let outN=0;
- bbs.forEach(o=>{const a=o.it.zone==='door'?doorRectWorld(o.it.doorId||doors[0].id):plateRectWorld(o.it.plateId||'P1');if(o.b.x0<a.x-1||o.b.y0<a.y-1||o.b.x1>a.x+a.w+1||o.b.y1>a.y+a.h+1)outN++});
- const ov=new Set();bbs.forEach((o,i)=>{if(o.it.kind)return;for(let j=i+1;j<bbs.length;j++){const q=bbs[j];if(q.it.kind)continue;if(o.b.x0<q.b.x1-2&&o.b.x1>q.b.x0+2&&o.b.y0<q.b.y1-2&&o.b.y1>q.b.y0+2){ov.add(o.it.id);ov.add(q.it.id)}}});
- const wired=wiredPinSet(),planned=ratlinePinSet(),focusWires=new Set(),focusRatlines=new Set(),focusPins=new Set();
+ ensurePlates();ensureDoors();const wired=wiredPinSet(),planned=ratlinePinSet(),focusWires=new Set(),focusRatlines=new Set(),focusPins=new Set();
  // A selected component focuses only wires connected to it. A selected wire focuses only itself.
  // In both cases, highlight exactly the terminal pins at the ends of those focused wires.
  if(focusedItemId!=null)wires.forEach(w=>{if(w.a.item===focusedItemId||w.b.item===focusedItemId)focusWires.add(w.id)});
@@ -1408,7 +1405,7 @@ function render(){
  if(sel&&sel[0]==='w'){const sw=wires.find(w=>w.id===+sel.slice(1));if(sw)focusWires.add(sw.id)}
  focusWires.forEach(id=>{const w=wires.find(x=>x.id===id);if(w&&!(viewOnly&&sel==='w'+w.id)){focusPins.add(pinKey(w.a.item,w.a.t));focusPins.add(pinKey(w.b.item,w.b.t))}});
  focusRatlines.forEach(id=>{const r=ratlines.find(x=>String(x.id)===String(id));if(r){focusPins.add(pinKey(r.a.item,r.a.t));focusPins.add(pinKey(r.b.item,r.b.t))}});
- warn=(outN?'  |  '+outN+' outside plate':'')+(ov.size?'  |  '+ov.size+' overlapping':'');
+ warn=''; // Intentional component overlap is permitted; no overlap diagnostic is generated.
  const off=24/k;
  doors.filter(d=>d.enabled!==false).forEach(d=>drawDoorFace(pl,d.id));
  plates.forEach((plate)=>{const r=plateRectWorld(plate.id),pw=r.w,ph=r.h,x=r.x,y=r.y;el('rect',{x,y,width:pw,height:ph,fill:plate.color||'var(--pn)','fill-opacity':.62,stroke:'#2a9d3f','stroke-width':2,'vector-effect':'non-scaling-stroke'},pl);tag(pl,x+pw/2,y-fs*1.2,`${plate.name} · ${plate.w} × ${plate.h} mm`,'#4b5563');dimLine(pl,{x,y:y-off},{x:x+pw,y:y-off},plate.w+' mm','#2a9d3f');dimLine(pl,{x:x-off,y},{x:x-off,y:y+ph},plate.h+' mm','#2a9d3f')});if(panel.bw&&panel.bh){const ex=plateExtent(),bx=ex.x+(ex.w-panel.bw)/2,by=ex.y+(ex.h-panel.bh)/2;el('rect',{x:bx*PX,y:by*PX,width:panel.bw*PX,height:panel.bh*PX,fill:'none',stroke:'#888','stroke-width':2,'stroke-dasharray':'10 5','vector-effect':'non-scaling-stroke'},pl);tag(pl,(bx+panel.bw/2)*PX,by*PX-fs*1.2,`Enclosure ${panel.bw} × ${panel.bh} × ${panel.bd||'?'} mm`,'#888')}
@@ -1836,6 +1833,10 @@ cv.onpointerdown=e=>{
  if(t.dataset.w){const w=wires.find(x=>x.id===+t.dataset.w);if(w)ensureManual(w);multiSel.clear();sel='w'+t.dataset.w;focusedItemId=null;selWp=null;render();return}
  if(t.dataset.x){multiSel.clear();sel='x'+t.dataset.x;const o=texts.find(z=>z.id==t.dataset.x);drag={k:'x',o,dx:p.x-o.x,dy:p.y-o.y};cap();render();return}
  if(iw){const it=items.find(i=>i.id==iw.dataset.i);if(!it)return;focusedItemId=it.id;
+  if(e.pointerType==='touch'&&sel!=='i'+it.id&&!multiSel.has(it.id)){
+   drag={k:'touchSelectPan',itemId:it.id,sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
+   cap();return;
+  }
   if(e.shiftKey||e.ctrlKey||e.metaKey){if(!multiSel.size&&sel&&sel[0]==='i'){const prior=+sel.slice(1);if(prior!==it.id)multiSel.add(prior)}if(multiSel.has(it.id))multiSel.delete(it.id);else multiSel.add(it.id);sel=multiSel.size===1?'i'+[...multiSel][0]:null;if(multiSel.size===1)multiSel.clear();focusedItemId=null;if(multiSel.size>1&&doorSelectedItems().length===multiSel.size)updateDoorArrangeDefaults();render();return}
   if(multiSel.size>1&&multiSel.has(it.id)){drag={k:'group',start:{x:p.x,y:p.y},origins:selectedComponentItems().map(o=>({id:o.id,x:o.x,y:o.y}))};cap();return}
   multiSel.clear();sel='i'+it.id;selWp=null;if(it.kind==='rail'){drag={k:'rail',o:it,startX:it.x,startY:it.y,dx:p.x-it.x,dy:p.y-it.y,children:items.filter(x=>x.railId===it.id).map(x=>({id:x.id,x:x.x,y:x.y}))}}else{drag={k:'i',o:it,dx:p.x-it.x,dy:p.y-it.y}}cap();render();return}
@@ -1852,6 +1853,12 @@ cv.onpointermove=e=>{
 const forceDoor=!!(drag&&(drag.k==='group'||drag.k==='marquee'||(drag.k==='i'&&drag.o?.zone==='door')||(drag.k==='pin'&&drag.it?.zone==='door')||(drag.k==='rs'&&drag.it?.zone==='door')||(drag.k==='rail'&&drag.o?.zone==='door')||(drag.k==='wp'&&wireTouchesDoor(drag.w))||(drag.k==='seg'&&wireTouchesDoor(drag.w))))||!!(mode==='wire'&&wireDraw&&doorItem(wireDraw.a.item))||!!(mode==='ratline'&&ratlineDraw&&doorItem(ratlineDraw.a.item));curW=toW(e,forceDoor);status();if(mode==='dim'&&dimFrom){render();return}
  if(pinch&&ptrs.size>=2){const[a,b]=[...ptrs.values()],r=cv.getBoundingClientRect(),d=Math.hypot(a.x-b.x,a.y-b.y),f=Math.max(.08,Math.min(4,pinch.v.k*d/pinch.d))/pinch.v.k,mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top;
   view.k=pinch.v.k*f;view.x=mx-(pinch.cx-pinch.v.x)*f;view.y=my-(pinch.cy-pinch.v.y)*f;render();return}
+ if(drag?.k==='touchSelectPan'){
+  const threshold=10;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>threshold){drag.moved=true;cv.style.cursor='grabbing'}
+  if(drag.moved){view.x=drag.vx+e.clientX-drag.sx;view.y=drag.vy+e.clientY-drag.sy;render()}
+  return;
+ }
  if(drag?.k==='viewGesture'){
   const threshold=drag.pointerType==='touch'?7:4;
   if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>threshold){drag.moved=true;cv.style.cursor='grabbing'}
@@ -1876,6 +1883,10 @@ const forceDoor=!!(drag&&(drag.k==='group'||drag.k==='marquee'||(drag.k==='i'&&d
  else if(drag.k==='rail'){const rail=drag.o,oldX=rail.x,oldY=rail.y,nx=snap(p.x-drag.dx),ny=snap(p.y-drag.dy),dx=nx-oldX,dy=ny-oldY;rail.x=nx;rail.y=ny;const z=zoneAtPoint({x:nx,y:ny});if(z){rail.zone=z;if(z==='plate'){const pp=plateAtPoint({x:nx,y:ny});if(pp)rail.plateId=pp.id;delete rail.doorId}else if(z==='door'){rail.doorId=doorAtPoint({x:nx,y:ny})?.id||activeDoorId;delete rail.plateId}else{delete rail.plateId;delete rail.doorId}}const moved=new Map();drag.children.forEach(o=>{const child=items.find(x=>x.id===o.id);if(child){child.x=o.x+(nx-drag.startX);child.y=o.y+(ny-drag.startY);child.zone=rail.zone||'plate';if(child.zone==='plate'){child.plateId=rail.plateId||'P1';delete child.doorId}else if(child.zone==='door'){child.doorId=rail.doorId||activeDoorId;delete child.plateId}else{delete child.plateId;delete child.doorId}moved.set(child.id,{dx,dy})}});translateManualRoutes(moved);syncDoorPartsFromItems()}
  else{const oldX=drag.o.x,oldY=drag.o.y;drag.o.x=snap(p.x-drag.dx);drag.o.y=snap(p.y-drag.dy);if(drag.k==='i'){const z=zoneAtPoint({x:drag.o.x,y:drag.o.y});if(z){drag.o.zone=z;if(z==='plate'){const phit=plateAtPoint({x:drag.o.x,y:drag.o.y});if(phit)drag.o.plateId=phit.id;delete drag.o.doorId}else if(z==='door'){drag.o.doorId=doorAtPoint({x:drag.o.x,y:drag.o.y})?.id||activeDoorId;delete drag.o.plateId}}snapComponentToRail(drag.o);shiftManualWireAnchors(new Map([[drag.o.id,{dx:drag.o.x-oldX,dy:drag.o.y-oldY}]]));syncDoorPartsFromItems()}}render()};
 cv.onpointerup=cv.onpointercancel=e=>{const done=drag,tap=touchStarts.get(e.pointerId);
+ if(done?.k==='touchSelectPan'&&e.type==='pointerup'&&!done.moved){
+  const it=items.find(x=>x.id===done.itemId);
+  if(it){multiSel.clear();sel='i'+it.id;focusedItemId=it.id;selWp=null;render();syncPanel()}
+ }
  if(done?.k==='viewGesture'&&e.type==='pointerup'&&!done.moved&&!done.forcePan){const h=done.hit;if(h?.type==='wire')viewSelectWire(h.id);else if(h?.type==='ratline')viewSelectRatline(h.id);else if(h?.type==='component')viewSelectComponent(h.id);else viewClearSelection()}
  if(done&&done.k==='marquee')finishDoorMarquee(done);if(done&&done.k==='pin'){persist(done.L);commit();}if(done&&(done.k==='wp'||done.k==='seg')){commit()}if(done&&(done.k==='i'||done.k==='group'||done.k==='rail'||done.k==='surface')){syncDoorPartsFromItems();fillDoorSelectors();renderDoorLists();refreshDoorSelectorsSafe();refreshPlateSelectors();commit()}if(e.type==='pointerup'&&e.pointerType==='touch'&&tap&&!tap.moved&&tap.itemId&&ptrs.size===1&&!viewOnly){
   const now=Date.now(),same=lastTouchTap&&lastTouchTap.itemId===tap.itemId&&now-lastTouchTap.at<430&&Math.hypot(e.clientX-lastTouchTap.x,e.clientY-lastTouchTap.y)<36;
@@ -2368,6 +2379,7 @@ function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);updateMobileHistoryU
 $('bUndo').onclick=undo;$('bRedo').onclick=redo;
 if($('pcHistoryUndo'))$('pcHistoryUndo').onclick=undo;
 if($('pcHistoryRedo'))$('pcHistoryRedo').onclick=redo;
+if($('pcHistoryFit'))$('pcHistoryFit').onclick=()=>{fitWorkspace();note('Panel and doors fitted to the workspace.',0)};
 updateMobileHistoryUi();
 // Capture edits after their handlers have run. Do not turn Undo/Redo clicks into new history entries.
 ['click','change','input','keyup','pointerup'].forEach(ev=>document.addEventListener(ev,e=>{if(e.target&&e.target.closest&&e.target.closest('#bUndo,#bRedo'))return;setTimeout(commit,0)},true));
@@ -2960,6 +2972,7 @@ html,body{max-width:100%;overflow:hidden}
  <span id="pcDockGrip" role="button" tabindex="0" aria-label="Move undo and redo controls" title="Drag to move this toolbar">⠿</span>
  <button id="pcHistoryUndo" type="button" title="Undo" aria-label="Undo" disabled><b>↶</b><span>Undo</span></button>
  <button id="pcHistoryRedo" type="button" title="Redo" aria-label="Redo" disabled><b>↷</b><span>Redo</span></button>
+ <button id="pcHistoryFit" type="button" title="Fit the panel and doors to the workspace" aria-label="Fit to screen"><b>⛶</b><span>Fit</span></button>
 </div>
 <style id="pc-mobile-action-dock-css">
 #pcMobileActionDock{display:none}
@@ -2967,7 +2980,7 @@ html,body{max-width:100%;overflow:hidden}
  #pcMobileActionDock{position:fixed;z-index:9990;left:50%;bottom:calc(7px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:7px;width:max-content;max-width:calc(100vw - 20px);padding:13px 7px 7px;border:1px solid rgba(200,216,242,.25);border-radius:18px;background:rgba(14,24,42,.96);box-shadow:0 10px 35px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#f8fafc;touch-action:none;user-select:none;-webkit-user-select:none}
  #pcDockGrip{position:absolute;left:50%;top:2px;transform:translateX(-50%);display:grid;place-items:center;width:42px;height:10px;border-radius:8px;color:rgba(232,241,255,.72);font-size:15px;font-weight:900;line-height:8px;cursor:grab;touch-action:none}
  #pcDockGrip:active{color:#fff;cursor:grabbing}
- #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:60px;min-height:48px;padding:4px 10px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
+ #pcMobileActionDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:56px;min-height:48px;padding:4px 10px;border:1px solid rgba(193,211,240,.14);border-radius:12px;background:rgba(255,255,255,.075);color:#f8fafc;font:700 10px/1.15 system-ui,sans-serif;touch-action:manipulation}
  #pcMobileActionDock button b{font-size:21px;line-height:1}
  #pcMobileActionDock button:disabled{opacity:.35}
  #pcMobileActionDock button:active{background:rgba(116,134,242,.35)}
@@ -3039,4 +3052,9 @@ html,body{max-width:100%;overflow:hidden}
 </style><style id="panel-craft-final-brand-style">
 .brand-icon{display:block;object-fit:cover;border-radius:10px;background:none!important;box-shadow:0 5px 14px rgba(10,132,255,.24)}
 #pcLicenseLogo{display:block;object-fit:cover;background:none!important;box-shadow:0 7px 24px rgba(0,0,0,.25)}
+</style><style id="r48-hide-canvas-info">
+#sb{display:none!important;visibility:hidden!important;pointer-events:none!important}
+@media(max-width:780px){
+ #bar .toolbar-primary,#bar .toolbar-secondary{touch-action:pan-x}
+}
 </style></body></html>
