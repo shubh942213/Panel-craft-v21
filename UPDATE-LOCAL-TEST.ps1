@@ -83,7 +83,7 @@ try {
         if ($blob.encoding -ne 'base64' -or !$blob.content) {
             throw ("GitHub did not return base64 content for {0}." -f $relativePath)
         }
-        $bytes = [Convert]::FromBase64String(($blob.content -replace '\\s', ''))
+        $bytes = [Convert]::FromBase64String(($blob.content -replace '\s', ''))
         [IO.File]::WriteAllBytes($sourceFile, $bytes)
         $actualSize = $bytes.Length
         if ($null -ne $item.size -and $actualSize -ne [int64]$item.size) {
